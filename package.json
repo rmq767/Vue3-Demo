@@ -15,7 +15,6 @@
     "element-plus": "^2.4.4",
     "html2canvas": "^1.4.1",
     "paper": "^0.12.17",
-    "swiper": "^11.0.5",
     "three": "^0.161.0",
     "vue": "^3.3.11",
     "vue-router": "4"

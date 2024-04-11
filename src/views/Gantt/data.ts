@@ -1,6 +1,6 @@
 import { gantt } from "dhtmlx-gantt"; // 引入模块
 import { ref } from "vue";
-import dayjs from "dayjs";
+import { dayjs } from "element-plus";
 
 export const data = [
   {
@@ -370,7 +370,7 @@ export const useGantt = () => {
     if (task.progress) {
       return `<div style="text-align:right;color:#000;background-color:${adjustColor(
         "#04aac1",
-        level * 20,
+        level! * 20,
         0.8
       )}">${Math.round(task.progress * 100)}%</div>`;
     }
@@ -424,7 +424,7 @@ export const useGantt = () => {
   };
 };
 
-function adjustColor(color, depth, alpha) {
+function adjustColor(color: any, depth: number, alpha: number) {
   // 判断颜色格式
   let isRgb = color.length === 3 || color.length === 4;
   let isHex = /^#[0-9a-fA-F]{6}$/.test(color);
@@ -436,12 +436,12 @@ function adjustColor(color, depth, alpha) {
   }
 
   // 将RGB或十六进制颜色转为RGBA格式
-  let rgbaColor;
+  let rgbaColor: any;
   if (isRgb) {
     rgbaColor = [...color, alpha];
   } else if (isHex) {
     let rgbColor = hexToRgb(color);
-    rgbaColor = [...rgbColor, alpha];
+    rgbaColor = [...(rgbColor as number[]), alpha];
   }
 
   // 根据深浅值调整RGBA值
@@ -451,7 +451,7 @@ function adjustColor(color, depth, alpha) {
 }
 
 // 十六进制转RGB
-function hexToRgb(hex) {
+function hexToRgb(hex: string) {
   let result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   return result
     ? [
@@ -463,7 +463,7 @@ function hexToRgb(hex) {
 }
 
 // 调整颜色深浅值和透明度
-function adjustColorValue(rgba, depth) {
+function adjustColorValue(rgba: any, depth: number) {
   return [
     Math.round(rgba[0] + depth) > 255 ? 255 : Math.round(rgba[0] + depth),
     Math.round(rgba[1] + depth) > 255 ? 255 : Math.round(rgba[1] + depth),

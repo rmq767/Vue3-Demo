@@ -45,7 +45,7 @@ const init = async () => {
     }),
   });
   // 去除版权样式
-  viewer.cesiumWidget.creditContainer.style.display = "none"; //去除版权样式
+  (viewer.cesiumWidget.creditContainer as HTMLElement).style.display = "none"; //去除版权样式
   //默认视角定位中国上空
   // viewer.camera.setView({
   //   destination: Cesium.Rectangle.fromDegrees(80, 22, 130, 55),

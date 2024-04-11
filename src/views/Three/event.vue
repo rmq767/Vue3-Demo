@@ -104,14 +104,17 @@ const initBox = () => {
     const intersects = raycaster.intersectObjects(threeConfig.scene!.children);
 
     if (intersects.length > 0) {
-      if (intersects[0].object._isSelect) {
-        intersects[0].object._isSelect = false;
-        intersects[0].object.material.color.set(intersects[0].object._orgColor);
+      if ((intersects[0].object as any)._isSelect) {
+        (intersects[0].object as any)._isSelect = false;
+        (intersects[0].object as any).material.color.set(
+          (intersects[0].object as any)._orgColor
+        );
       } else {
-        intersects[0].object._isSelect = true;
-        intersects[0].object._orgColor =
-          intersects[0].object.material.color.getHex();
-        intersects[0].object.material.color.set(0xff0000);
+        (intersects[0].object as any)._isSelect = true;
+        (intersects[0].object as any)._orgColor = (
+          intersects[0].object as any
+        ).material.color.getHex();
+        (intersects[0].object as any).material.color.set(0xff0000);
       }
     }
   });

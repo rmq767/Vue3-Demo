@@ -48,7 +48,7 @@ const initThree = () => {
   // 渲染器
   threeConfig.renderder = new THREE.WebGLRenderer({ antialias: true }); //抗锯齿
   // 开启投射阴影
-  threeConfig.renderder.shadowMap.enabled = true;
+  (threeConfig.renderder as any).shadowMap.enabled = true;
 
   threeConfig.renderder.setSize(el.offsetWidth, el.offsetHeight);
 

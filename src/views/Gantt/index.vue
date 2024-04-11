@@ -140,7 +140,7 @@ const shoot = () => {
   });
 };
 onMounted(() => {
-  init(state.tasks);
+  init(state.tasks as any);
 });
 </script>
 

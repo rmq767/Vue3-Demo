@@ -130,7 +130,7 @@ const initGLTF = () => {
     console.log(gltf);
     // threeConfig.scene!.add(gltf.scene);
     // 获取group里面的所有几何体 转化成线框
-    gltf.scene.traverse((child) => {
+    gltf.scene.traverse((child: any) => {
       if (child.isObject3D) {
         const geo = child.geometry;
         const edgesGeo = new THREE.EdgesGeometry(geo);

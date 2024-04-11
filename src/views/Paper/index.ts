@@ -54,7 +54,7 @@ export const usePaper = (config: PaperConfig) => {
    */
   const canvasHandleFn = () => {
     // 鼠标按下操作
-    paperInstance.value.view.onMouseDown = (event: paper.MouseEvent) => {
+    paperInstance.value.view.onMouseDown = (event: paper.MouseEvent | any) => {
       const ele = event.target as unknown as paper.View;
       const view = toRaw(paperInstance.value.view);
       // 开启拖拽画布
@@ -369,7 +369,7 @@ export const usePaper = (config: PaperConfig) => {
         }
       };
       // 每个item添加鼠标拖动事件
-      item.onMouseDrag = (event: paper.MouseEvent) => {
+      item.onMouseDrag = (event: paper.MouseEvent | any) => {
         // 只有拖拽 单独开启
         if (
           config.itemHandle === "drag" ||
@@ -407,7 +407,7 @@ export const usePaper = (config: PaperConfig) => {
         let tootipsEl = document.querySelector(".tootips") as HTMLElement;
         tootipsEl.style.display = "none";
       };
-      item.onMouseMove = (event: paper.MouseEvent) => {
+      item.onMouseMove = (event: paper.MouseEvent | any) => {
         let tootipsEl = document.querySelector(".tootips") as HTMLElement;
         if (!tootipsEl) {
           tootipsEl = document.createElement("div");
