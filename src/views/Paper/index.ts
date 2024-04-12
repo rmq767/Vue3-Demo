@@ -99,9 +99,14 @@ export const usePaper = (config: PaperConfig) => {
           selection.value.strokeWidth = 1;
           selection.value.strokeColor = new Paper.Color(0, 0, 0, 0.5);
           selection.value.style.dashArray = [4, 4];
+          selection.value.name = "selection";
         }
         if (selectionGroup.value && ele === view) {
-          selectionGroup.value[0].remove();
+          const children = selectionGroup.value[2].removeChildren();
+          children?.forEach((item) => {
+            item.addTo(paperInstance.value.project);
+          });
+          selectionGroup.value = undefined;
         }
       }
     };
@@ -113,6 +118,7 @@ export const usePaper = (config: PaperConfig) => {
     };
     paperInstance.value.view.onMouseUp = (e: paper.MouseEvent) => {
       if (selection.value) {
+        let childrens: paper.Item[] = [];
         // 处理选中组
         const chooseItems = paperInstance.value.project.getItems({
           match: (item: paper.Item) => {
@@ -123,19 +129,30 @@ export const usePaper = (config: PaperConfig) => {
               bottomRight.x < selection.value!.bounds.bottomRight.x &&
               bottomRight.y < selection.value!.bounds.bottomRight.y
             ) {
-              return item;
+              if (item instanceof Paper.Group) {
+                childrens.push(...item.children);
+                return item;
+              } else {
+                if (!childrens.includes(item)) {
+                  return item;
+                }
+              }
             }
           },
         });
-        // 将框出来的item 组成一个组 组进行缩放拖拽
-        const g = new Paper.Group([...chooseItems]);
-        selectionGroup.value = addSelect(g);
-        paperInstance.value.project?.activeLayer.addChild(
-          selectionGroup.value![1]
-        ); //提高层级
-
-        selection.value!.remove();
-        selection.value = undefined;
+        console.log(chooseItems);
+        if (chooseItems.length) {
+          // 将框出来的item 组成一个组 组进行缩放拖拽
+          const g = new Paper.Group([...chooseItems]);
+          selectionGroup.value = addSelect(g);
+          paperInstance.value.project?.activeLayer.addChild(
+            selectionGroup.value![1]
+          ); //提高层级
+        }
+        if (selection.value) {
+          selection.value!.remove();
+          selection.value = undefined;
+        }
         downPoint.x = 0;
         downPoint.y = 0;
       }
@@ -184,6 +201,38 @@ export const usePaper = (config: PaperConfig) => {
       strokeWidth: 1,
       name: "bottomRightRect",
     });
+    const topCenterRect = new Paper.Path.Rectangle({
+      center: item.bounds.topCenter, //中心点
+      size: [10, 10], //边长
+      fillColor: new Paper.Color("#fff"),
+      strokeColor: new Paper.Color("blue"),
+      strokeWidth: 1,
+      name: "topCenterRect",
+    });
+    const leftCenterRect = new Paper.Path.Rectangle({
+      center: item.bounds.leftCenter, //中心点
+      size: [10, 10], //边长
+      fillColor: new Paper.Color("#fff"),
+      strokeColor: new Paper.Color("blue"),
+      strokeWidth: 1,
+      name: "leftCenterRect",
+    });
+    const rightCenterRect = new Paper.Path.Rectangle({
+      center: item.bounds.rightCenter, //中心点
+      size: [10, 10], //边长
+      fillColor: new Paper.Color("#fff"),
+      strokeColor: new Paper.Color("blue"),
+      strokeWidth: 1,
+      name: "rightCenterRect",
+    });
+    const bottomCenterRect = new Paper.Path.Rectangle({
+      center: item.bounds.bottomCenter, //中心点
+      size: [10, 10], //边长
+      fillColor: new Paper.Color("#fff"),
+      strokeColor: new Paper.Color("blue"),
+      strokeWidth: 1,
+      name: "bottomCenterRect",
+    });
     // 将矩形和四个角添加到组中
     const g1 = new Paper.Group([
       rect,
@@ -191,6 +240,10 @@ export const usePaper = (config: PaperConfig) => {
       topRightRect,
       bottomLeftRect,
       bottomRightRect,
+      topCenterRect,
+      leftCenterRect,
+      rightCenterRect,
+      bottomCenterRect,
     ]);
     // 将选择框和当前元素添加到组中，目的是统一选择框和当前元素的拖拽缩放等
     const g2 = new Paper.Group([item, g1]);
@@ -222,10 +275,23 @@ export const usePaper = (config: PaperConfig) => {
       rect.bounds.size.height -= e.delta.y;
       rect.bounds.size.width -= e.delta.x;
 
+      // 左上 xy
       topLeftRect.bounds.x += e.delta.x;
       topLeftRect.bounds.y += e.delta.y;
+      // 右上 y
       topRightRect.bounds.y += e.delta.y;
+      // 左下 x
       bottomLeftRect.bounds.x += e.delta.x;
+      // 上中 xy
+      topCenterRect.bounds.y += e.delta.y;
+      topCenterRect.bounds.x += e.delta.x / 2;
+      // 左中 xy
+      leftCenterRect.bounds.y += e.delta.y / 2;
+      leftCenterRect.bounds.x += e.delta.x;
+      // 右中 y
+      rightCenterRect.bounds.y += e.delta.y / 2;
+      // 下中 x
+      bottomCenterRect.bounds.x += e.delta.x / 2;
     };
     topRightRect.onMouseDrag = (e: paper.MouseEvent) => {
       e.stopPropagation();
@@ -243,10 +309,23 @@ export const usePaper = (config: PaperConfig) => {
       rect.bounds.size.height -= e.delta.y;
       rect.bounds.size.width += e.delta.x;
 
+      // 右上 xy
       topRightRect.bounds.x += e.delta.x;
       topRightRect.bounds.y += e.delta.y;
+      // 左上 y
       topLeftRect.bounds.y += e.delta.y;
+      // 右下 x
       bottomRightRect.bounds.x += e.delta.x;
+      // 上中 xy
+      topCenterRect.bounds.y += e.delta.y;
+      topCenterRect.bounds.x += e.delta.x / 2;
+      // 左中 y
+      leftCenterRect.bounds.y += e.delta.y / 2;
+      // 右中 xy
+      rightCenterRect.bounds.y += e.delta.y / 2;
+      rightCenterRect.bounds.x += e.delta.x;
+      // 下中 x
+      bottomCenterRect.bounds.x += e.delta.x / 2;
     };
     bottomLeftRect.onMouseDrag = (e: paper.MouseEvent) => {
       e.stopPropagation();
@@ -264,10 +343,23 @@ export const usePaper = (config: PaperConfig) => {
       rect.bounds.size.height += e.delta.y;
       rect.bounds.size.width -= e.delta.x;
 
+      // 左下 xy
       bottomLeftRect.bounds.x += e.delta.x;
       bottomLeftRect.bounds.y += e.delta.y;
+      // 坐上 x
       topLeftRect.bounds.x += e.delta.x;
+      // 右下 y
       bottomRightRect.bounds.y += e.delta.y;
+      // 上中 x
+      topCenterRect.bounds.x += e.delta.x / 2;
+      // 左中 xy
+      leftCenterRect.bounds.y += e.delta.y / 2;
+      leftCenterRect.bounds.x += e.delta.x;
+      // 右中 y
+      rightCenterRect.bounds.y += e.delta.y / 2;
+      // 下中 xy
+      bottomCenterRect.bounds.y += e.delta.y;
+      bottomCenterRect.bounds.x += e.delta.x / 2;
     };
     bottomRightRect.onMouseDrag = (e: paper.MouseEvent) => {
       e.stopPropagation();
@@ -283,38 +375,154 @@ export const usePaper = (config: PaperConfig) => {
       rect.bounds.size.height += e.delta.y;
       rect.bounds.size.width += e.delta.x;
 
+      // 右下
       bottomRightRect.bounds.x += e.delta.x;
       bottomRightRect.bounds.y += e.delta.y;
+      // 右上 x
       topRightRect.bounds.x += e.delta.x;
+      // 左下 y
       bottomLeftRect.bounds.y += e.delta.y;
+      // 上中 x
+      topCenterRect.bounds.x += e.delta.x / 2;
+      // 左中 y
+      leftCenterRect.bounds.y += e.delta.y / 2;
+      // 右中 xy
+      rightCenterRect.bounds.y += e.delta.y / 2;
+      rightCenterRect.bounds.x += e.delta.x;
+      // 下中 xy
+      bottomCenterRect.bounds.y += e.delta.y;
+      bottomCenterRect.bounds.x += e.delta.x / 2;
     };
-    [topLeftRect, topRightRect, bottomLeftRect, bottomRightRect].forEach(
-      (item) => {
-        item.onMouseLeave = (e: paper.MouseEvent) => {
-          e.stopPropagation();
-          cursor.value = "default";
-        };
-        item.onMouseEnter = (e: paper.MouseEvent) => {
-          e.stopPropagation();
-          switch (e.target.name) {
-            case "topLeftRect":
-              cursor.value = "nw-resize";
-              break;
-            case "topRightRect":
-              cursor.value = "ne-resize";
-              break;
-            case "bottomLeftRect":
-              cursor.value = "sw-resize";
-              break;
-            case "bottomRightRect":
-              cursor.value = "se-resize";
-              break;
-          }
-        };
+    topCenterRect.onMouseDrag = (e: paper.MouseEvent) => {
+      e.stopPropagation();
+      if (item.bounds.size.height - e.delta.y <= 20) {
+        return;
       }
-    );
+      item.bounds.center.y += e.delta.y;
+      item.bounds.size.height -= e.delta.y;
 
-    return [g1, g2];
+      rect.bounds.center.y += e.delta.y;
+      rect.bounds.size.height -= e.delta.y;
+
+      // 左上 y
+      topLeftRect.bounds.y += e.delta.y;
+      // 右上 y
+      topRightRect.bounds.y += e.delta.y;
+      // 上中 y
+      topCenterRect.bounds.y += e.delta.y;
+      // 左中 y
+      leftCenterRect.bounds.y += e.delta.y / 2;
+      // 右中 y
+      rightCenterRect.bounds.y += e.delta.y / 2;
+    };
+    leftCenterRect.onMouseDrag = (e: paper.MouseEvent) => {
+      e.stopPropagation();
+      if (item.bounds.size.width - e.delta.x <= 20) {
+        return;
+      }
+      item.bounds.center.x += e.delta.x;
+      item.bounds.size.width -= e.delta.x;
+
+      rect.bounds.center.x += e.delta.x;
+      rect.bounds.size.width -= e.delta.x;
+
+      // 左上 x
+      topLeftRect.bounds.x += e.delta.x;
+      // 左下 x
+      bottomLeftRect.bounds.x += e.delta.x;
+      // 左中 x
+      leftCenterRect.bounds.x += e.delta.x;
+      // 上中 x
+      topCenterRect.bounds.x += e.delta.x / 2;
+      // 下中 x
+      bottomCenterRect.bounds.x += e.delta.x / 2;
+    };
+    bottomCenterRect.onMouseDrag = (e: paper.MouseEvent) => {
+      e.stopPropagation();
+      if (item.bounds.size.height + e.delta.y <= 20) {
+        return;
+      }
+      item.bounds.size.height += e.delta.y;
+
+      rect.bounds.size.height += e.delta.y;
+
+      // 左下 y
+      bottomLeftRect.bounds.y += e.delta.y;
+      // 右下 y
+      bottomRightRect.bounds.y += e.delta.y;
+      // 下中 y
+      bottomCenterRect.bounds.y += e.delta.y;
+      // 左中 y
+      leftCenterRect.bounds.y += e.delta.y / 2;
+      // 右中 y
+      rightCenterRect.bounds.y += e.delta.y / 2;
+    };
+    rightCenterRect.onMouseDrag = (e: paper.MouseEvent) => {
+      e.stopPropagation();
+      if (item.bounds.size.width + e.delta.x <= 20) {
+        return;
+      }
+      item.bounds.size.width += e.delta.x;
+
+      rect.bounds.size.width += e.delta.x;
+
+      // 右上 x
+      topRightRect.bounds.x += e.delta.x;
+      // 右下 x
+      bottomRightRect.bounds.x += e.delta.x;
+      // 右中 x
+      rightCenterRect.bounds.x += e.delta.x;
+      // 上中 x
+      topCenterRect.bounds.x += e.delta.x / 2;
+      // 下中 x
+      bottomCenterRect.bounds.x += e.delta.x / 2;
+    };
+    [
+      topLeftRect,
+      topRightRect,
+      bottomLeftRect,
+      bottomRightRect,
+      topCenterRect,
+      leftCenterRect,
+      rightCenterRect,
+      bottomCenterRect,
+    ].forEach((item) => {
+      item.onMouseLeave = (e: paper.MouseEvent) => {
+        e.stopPropagation();
+        cursor.value = "default";
+      };
+      item.onMouseEnter = (e: paper.MouseEvent) => {
+        e.stopPropagation();
+        switch (e.target.name) {
+          case "topLeftRect":
+            cursor.value = "nw-resize";
+            break;
+          case "topRightRect":
+            cursor.value = "ne-resize";
+            break;
+          case "bottomLeftRect":
+            cursor.value = "sw-resize";
+            break;
+          case "bottomRightRect":
+            cursor.value = "se-resize";
+            break;
+          case "topCenterRect":
+            cursor.value = "n-resize";
+            break;
+          case "leftCenterRect":
+            cursor.value = "w-resize";
+            break;
+          case "rightCenterRect":
+            cursor.value = "e-resize";
+            break;
+          case "bottomCenterRect":
+            cursor.value = "s-resize";
+            break;
+        }
+      };
+    });
+
+    return [g1, g2, item];
   };
 
   const registerMouseEvent = () => {
@@ -330,7 +538,7 @@ export const usePaper = (config: PaperConfig) => {
             selectionGroup.value = map.get(event.target);
             selectionGroup.value![0].remove();
             map.delete(event.target);
-            selectionGroup.value = addSelect(event.target);
+            selectionGroup.value = addSelect(new Paper.Group(event.target));
           } else {
             if (selectionGroup.value) {
               // 获取选中组
@@ -343,11 +551,11 @@ export const usePaper = (config: PaperConfig) => {
               });
               // 没有组 添加单个item的选中
               if (!current.length) {
-                selectionGroup.value = addSelect(event.target);
+                selectionGroup.value = addSelect(new Paper.Group(event.target));
                 map.set(event.target, selectionGroup.value);
               }
             } else {
-              selectionGroup.value = addSelect(event.target);
+              selectionGroup.value = addSelect(new Paper.Group(event.target));
             }
           }
           paperInstance.value.project.activeLayer.addChild(

@@ -132,7 +132,6 @@ const drawText = () => {
 };
 
 const drawGroup = () => {
-  const group = new Paper.Group();
   const text = new Paper.PointText({
     position: [0, -50 - 10], //文本位置
     content: "圆",
@@ -145,7 +144,8 @@ const drawGroup = () => {
     radius: 50, //半径
     fillColor: "red", //填充颜色
   });
-  group.addChildren([text, circle]);
+  const group = new Paper.Group([text, circle]);
+  // group.addChildren([text, circle]);
   group.position.set(1200, 800);
 };
 
@@ -230,7 +230,7 @@ onMounted(() => {
   drawArc();
   setTimeout(() => {
     drawCurve(); //注册事件之后画出来 不会响应事件
-    registerMouseEvent(); //需要重新注册一下事件
+    // registerMouseEvent(); //需要重新注册一下事件
   }, 3000);
 });
 </script>
