@@ -14,7 +14,7 @@ export const usePaper = (config: PaperConfig) => {
     zoom: true,
     canvasHandle: "drag",
     itemHandle: "none",
-    tooltips: "我是提示",
+    tooltips: "",
   };
   config = { ...defaultConfig, ...config };
 
@@ -102,6 +102,7 @@ export const usePaper = (config: PaperConfig) => {
           selection.value.name = "selection";
         }
         if (selectionGroup.value && ele === view) {
+          // 处理选中组
           const children = selectionGroup.value[2].removeChildren();
           children?.forEach((item) => {
             item.addTo(paperInstance.value.project);
@@ -122,13 +123,27 @@ export const usePaper = (config: PaperConfig) => {
         // 处理选中组
         const chooseItems = paperInstance.value.project.getItems({
           match: (item: paper.Item) => {
-            const { topLeft, bottomRight } = item.bounds;
+            if (!item.parent) {
+              // 圈住的是空白
+              return;
+            }
+            let topLeft, bottomRight: paper.Point;
+            if (paperInstance.value.project.activeLayer === item.parent) {
+              // 圈住的是单个元素
+              topLeft = item.bounds.topLeft;
+              bottomRight = item.bounds.bottomRight;
+            } else {
+              // 圈住的是组
+              topLeft = item.parent.bounds.topLeft;
+              bottomRight = item.parent.bounds.bottomRight;
+            }
             if (
               topLeft.x > selection.value!.bounds.topLeft.x &&
               topLeft.y > selection.value!.bounds.topLeft.y &&
               bottomRight.x < selection.value!.bounds.bottomRight.x &&
               bottomRight.y < selection.value!.bounds.bottomRight.y
             ) {
+              // 处理选中组
               if (item instanceof Paper.Group) {
                 childrens.push(...item.children);
                 return item;
@@ -140,10 +155,10 @@ export const usePaper = (config: PaperConfig) => {
             }
           },
         });
-        console.log(chooseItems);
         if (chooseItems.length) {
           // 将框出来的item 组成一个组 组进行缩放拖拽
           const g = new Paper.Group([...chooseItems]);
+          g.name = "group";
           selectionGroup.value = addSelect(g);
           paperInstance.value.project?.activeLayer.addChild(
             selectionGroup.value![1]
@@ -233,6 +248,21 @@ export const usePaper = (config: PaperConfig) => {
       strokeWidth: 1,
       name: "bottomCenterRect",
     });
+    // const rotateCenterRect = new Paper.Path.Rectangle({
+    //   center: [item.bounds.topCenter.x, item.bounds.topCenter.y - 50], //中心点
+    //   size: [10, 10], //边长
+    //   fillColor: new Paper.Color("#fff"),
+    //   strokeColor: new Paper.Color("blue"),
+    //   strokeWidth: 1,
+    //   name: "rotateCenterRect",
+    // });
+    // const rotateLine = new Paper.Path.Line({
+    //   from: [item.bounds.topCenter.x, item.bounds.topCenter.y - 5],
+    //   to: [item.bounds.topCenter.x, item.bounds.topCenter.y - 50],
+    //   strokeColor: new Paper.Color("blue"),
+    //   strokeWidth: 1,
+    //   name: "rotateLine",
+    // });
     // 将矩形和四个角添加到组中
     const g1 = new Paper.Group([
       rect,
@@ -244,6 +274,8 @@ export const usePaper = (config: PaperConfig) => {
       leftCenterRect,
       rightCenterRect,
       bottomCenterRect,
+      // rotateLine,
+      // rotateCenterRect,
     ]);
     // 将选择框和当前元素添加到组中，目的是统一选择框和当前元素的拖拽缩放等
     const g2 = new Paper.Group([item, g1]);
@@ -251,10 +283,11 @@ export const usePaper = (config: PaperConfig) => {
     if (config.itemHandle?.includes("drag")) {
       g2.onMouseDrag = (e: paper.MouseEvent) => {
         e.stopPropagation();
-        g2.position.set(
+        item.position.set(
           item.position.x + e.delta.x,
           item.position.y + e.delta.y
         );
+        g1.position.set(g1.position.x + e.delta.x, g1.position.y + e.delta.y);
       };
     }
     topLeftRect.onMouseDrag = (e: paper.MouseEvent) => {
@@ -292,6 +325,11 @@ export const usePaper = (config: PaperConfig) => {
       rightCenterRect.bounds.y += e.delta.y / 2;
       // 下中 x
       bottomCenterRect.bounds.x += e.delta.x / 2;
+      // 旋转
+      // rotateLine.bounds.x += e.delta.x / 2;
+      // rotateLine.bounds.y += e.delta.y;
+      // rotateCenterRect.bounds.x += e.delta.x / 2;
+      // rotateCenterRect.bounds.y += e.delta.y;
     };
     topRightRect.onMouseDrag = (e: paper.MouseEvent) => {
       e.stopPropagation();
@@ -326,6 +364,11 @@ export const usePaper = (config: PaperConfig) => {
       rightCenterRect.bounds.x += e.delta.x;
       // 下中 x
       bottomCenterRect.bounds.x += e.delta.x / 2;
+      // 旋转
+      // rotateLine.bounds.x += e.delta.x / 2;
+      // rotateLine.bounds.y += e.delta.y;
+      // rotateCenterRect.bounds.x += e.delta.x / 2;
+      // rotateCenterRect.bounds.y += e.delta.y;
     };
     bottomLeftRect.onMouseDrag = (e: paper.MouseEvent) => {
       e.stopPropagation();
@@ -360,6 +403,9 @@ export const usePaper = (config: PaperConfig) => {
       // 下中 xy
       bottomCenterRect.bounds.y += e.delta.y;
       bottomCenterRect.bounds.x += e.delta.x / 2;
+      // 旋转
+      // rotateLine.bounds.x += e.delta.x / 2;
+      // rotateCenterRect.bounds.x += e.delta.x / 2;
     };
     bottomRightRect.onMouseDrag = (e: paper.MouseEvent) => {
       e.stopPropagation();
@@ -392,6 +438,9 @@ export const usePaper = (config: PaperConfig) => {
       // 下中 xy
       bottomCenterRect.bounds.y += e.delta.y;
       bottomCenterRect.bounds.x += e.delta.x / 2;
+      // 旋转
+      // rotateLine.bounds.x += e.delta.x / 2;
+      // rotateCenterRect.bounds.x += e.delta.x / 2;
     };
     topCenterRect.onMouseDrag = (e: paper.MouseEvent) => {
       e.stopPropagation();
@@ -414,6 +463,9 @@ export const usePaper = (config: PaperConfig) => {
       leftCenterRect.bounds.y += e.delta.y / 2;
       // 右中 y
       rightCenterRect.bounds.y += e.delta.y / 2;
+      // 旋转
+      // rotateLine.bounds.y += e.delta.y;
+      // rotateCenterRect.bounds.y += e.delta.y;
     };
     leftCenterRect.onMouseDrag = (e: paper.MouseEvent) => {
       e.stopPropagation();
@@ -436,6 +488,9 @@ export const usePaper = (config: PaperConfig) => {
       topCenterRect.bounds.x += e.delta.x / 2;
       // 下中 x
       bottomCenterRect.bounds.x += e.delta.x / 2;
+      // 旋转
+      // rotateLine.bounds.x += e.delta.x / 2;
+      // rotateCenterRect.bounds.x += e.delta.x / 2;
     };
     bottomCenterRect.onMouseDrag = (e: paper.MouseEvent) => {
       e.stopPropagation();
@@ -476,7 +531,21 @@ export const usePaper = (config: PaperConfig) => {
       topCenterRect.bounds.x += e.delta.x / 2;
       // 下中 x
       bottomCenterRect.bounds.x += e.delta.x / 2;
+      // 旋转
+      // rotateLine.bounds.x += e.delta.x / 2;
+      // rotateCenterRect.bounds.x += e.delta.x / 2;
     };
+    // let lastAngle = 0;
+    // rotateCenterRect.onMouseDrag = (e: paper.MouseEvent) => {
+    //   e.stopPropagation();
+    //   const start = item.bounds.center;
+    //   const end1 = e.point;
+    //   const end2 = item.bounds.topCenter;
+    //   const angle = getAngle(end1.x, end1.y, end2.x, end2.y, start.x, start.y);
+    //   item.rotate(-(angle - lastAngle), start);
+    //   g1.rotate(-(angle - lastAngle), start);
+    //   lastAngle = angle;
+    // };
     [
       topLeftRect,
       topRightRect,
@@ -486,6 +555,7 @@ export const usePaper = (config: PaperConfig) => {
       leftCenterRect,
       rightCenterRect,
       bottomCenterRect,
+      // rotateCenterRect,
     ].forEach((item) => {
       item.onMouseLeave = (e: paper.MouseEvent) => {
         e.stopPropagation();
@@ -518,6 +588,9 @@ export const usePaper = (config: PaperConfig) => {
           case "bottomCenterRect":
             cursor.value = "s-resize";
             break;
+          // case "rotateCenterRect":
+          //   cursor.value = "all-scroll";
+          //   break;
         }
       };
     });
@@ -525,119 +598,152 @@ export const usePaper = (config: PaperConfig) => {
     return [g1, g2, item];
   };
 
+  // function getAngle(
+  //   x1: number,
+  //   y1: number,
+  //   x2: number,
+  //   y2: number,
+  //   cx: number,
+  //   cy: number
+  // ) {
+  //   //2个点之间的角度获取
+  //   let c1 = (Math.atan2(y1 - cy, x1 - cx) * 180) / Math.PI;
+  //   let c2 = (Math.atan2(y2 - cy, x2 - cx) * 180) / Math.PI;
+  //   let angle;
+  //   c1 = c1 <= -90 ? 360 + c1 : c1;
+  //   c2 = c2 <= -90 ? 360 + c2 : c2;
+
+  //   //夹角获取
+  //   angle = Math.floor(c2 - c1);
+  //   angle = angle < 0 ? angle + 360 : angle;
+  //   return angle;
+  // }
+
   const registerMouseEvent = () => {
     const children = paperInstance.value.project.activeLayer.children;
     // 单个item的事件
     children?.forEach((item: any) => {
       // 每个item添加按下鼠标事件
-      item.onMouseDown = (event: paper.MouseEvent) => {
-        // 处理点击单个选中
-        if (config.itemHandle?.includes("select")) {
-          if (map.has(event.target)) {
-            // 点击相同item，移除之前的，新添加一个
-            selectionGroup.value = map.get(event.target);
-            selectionGroup.value![0].remove();
-            map.delete(event.target);
-            selectionGroup.value = addSelect(new Paper.Group(event.target));
-          } else {
-            if (selectionGroup.value) {
-              // 获取选中组
-              const current = selectionGroup.value[1].getItems({
-                match: (item: paper.Item) => {
-                  if (item === event.target) {
-                    return item;
-                  }
-                },
-              });
-              // 没有组 添加单个item的选中
-              if (!current.length) {
-                selectionGroup.value = addSelect(new Paper.Group(event.target));
-                map.set(event.target, selectionGroup.value);
-              }
-            } else {
-              selectionGroup.value = addSelect(new Paper.Group(event.target));
-            }
-          }
-          paperInstance.value.project.activeLayer.addChild(
-            selectionGroup.value![1]
-          ); //提高层级
-
-          // // 下载
-          // const download = paperInstance.value.project.getItem({
-          //   name: "download",
-          // });
-          // if (download!.name === event.target.name) {
-          //   screenShot();
-          // }
-        } else if (
-          config.itemHandle === "drag" ||
-          (config.itemHandle && config.itemHandle[0] === "drag")
-        ) {
-          paperInstance.value.project.activeLayer.addChild(event.target);
-        }
-      };
+      item.onMouseDown = registerMouseDown;
       // 每个item添加鼠标拖动事件
       item.onMouseDrag = (event: paper.MouseEvent | any) => {
-        // 只有拖拽 单独开启
-        if (
-          config.itemHandle === "drag" ||
-          (config.itemHandle && config.itemHandle[0] === "drag")
-        ) {
-          item.position.set(
-            item.position.x + event.delta.x,
-            item.position.y + event.delta.y
-          );
-        }
-        let tootipsEl = document.querySelector(".tootips") as HTMLElement;
-        if (!tootipsEl) {
-          tootipsEl = document.createElement("div");
-          document.body.appendChild(tootipsEl);
-          tootipsEl.innerHTML =
-            typeof config.tooltips === "string"
-              ? config.tooltips
-              : config.tooltips();
-          tootipsEl.className = "tootips";
-          tootipsEl.style.position = "absolute";
-          tootipsEl.style.left = event.event.offsetX + 10 + "px";
-          tootipsEl.style.top = event.event.offsetY + 10 + "px";
-          tootipsEl.style.color = "#999";
-        } else {
-          tootipsEl.style.display = "block";
-          tootipsEl.style.left = event.event.offsetX + 10 + "px";
-          tootipsEl.style.top = event.event.offsetY + 10 + "px";
-        }
+        registerMouseDrag(event, item);
       };
-      item.onMouseEnter = (e: paper.MouseEvent) => {
-        cursor.value = "pointer";
-      };
-      item.onMouseLeave = () => {
-        cursor.value = "defatul";
-        let tootipsEl = document.querySelector(".tootips") as HTMLElement;
-        tootipsEl.style.display = "none";
-      };
-      item.onMouseMove = (event: paper.MouseEvent | any) => {
-        let tootipsEl = document.querySelector(".tootips") as HTMLElement;
-        if (!tootipsEl) {
-          tootipsEl = document.createElement("div");
-          document.body.appendChild(tootipsEl);
-          tootipsEl.innerHTML =
-            typeof config.tooltips === "string"
-              ? config.tooltips
-              : config.tooltips();
-          tootipsEl.className = "tootips";
-          tootipsEl.style.position = "absolute";
-          tootipsEl.style.left = event.event.offsetX + 10 + "px";
-          tootipsEl.style.top = event.event.offsetY + 10 + "px";
-          tootipsEl.style.color = "#999";
-        } else {
-          tootipsEl.style.display = "block";
-          tootipsEl.style.left = event.event.offsetX + 10 + "px";
-          tootipsEl.style.top = event.event.offsetY + 10 + "px";
-        }
-      };
+      item.onMouseEnter = registerMouseEnter;
+      item.onMouseLeave = registerMouseLeave;
+      item.onMouseMove = registerMouseMove;
     });
   };
 
+  const registerMouseDown = (event: paper.MouseEvent) => {
+    // 处理点击单个选中
+    if (config.itemHandle?.includes("select")) {
+      if (map.has(event.target)) {
+        // 点击相同item，移除之前的，新添加一个
+        selectionGroup.value = map.get(event.target);
+        selectionGroup.value![0].remove();
+        map.delete(event.target);
+        selectionGroup.value = addSelect(new Paper.Group(event.target));
+      } else {
+        if (selectionGroup.value) {
+          // 获取选中组
+          const current = selectionGroup.value[1].getItems({
+            match: (item: paper.Item) => {
+              if (item === event.target) {
+                return item;
+              }
+            },
+          });
+          // 没有组 添加单个item的选中
+          if (!current.length) {
+            selectionGroup.value = addSelect(new Paper.Group(event.target));
+            map.set(event.target, selectionGroup.value);
+          }
+        } else {
+          selectionGroup.value = addSelect(new Paper.Group(event.target));
+        }
+      }
+      paperInstance.value.project.activeLayer.addChild(
+        selectionGroup.value![1]
+      ); //提高层级
+
+      // // 下载
+      // const download = paperInstance.value.project.getItem({
+      //   name: "download",
+      // });
+      // if (download!.name === event.target.name) {
+      //   screenShot();
+      // }
+    } else if (
+      config.itemHandle === "drag" ||
+      (config.itemHandle && config.itemHandle[0] === "drag")
+    ) {
+      paperInstance.value.project.activeLayer.addChild(event.target);
+    }
+  };
+  const registerMouseDrag = (
+    event: paper.MouseEvent | any,
+    item: paper.Item
+  ) => {
+    // 只有拖拽 单独开启
+    if (
+      config.itemHandle === "drag" ||
+      (config.itemHandle && config.itemHandle[0] === "drag")
+    ) {
+      item.position.set(
+        item.position.x + event.delta.x,
+        item.position.y + event.delta.y
+      );
+    }
+    initTooltips(event);
+  };
+  const registerMouseEnter = () => {
+    cursor.value = "pointer";
+  };
+  const registerMouseLeave = () => {
+    cursor.value = "defatul";
+    let tootipsEl = document.querySelector(".tootips") as HTMLElement;
+    if (tootipsEl && config.tooltips) {
+      tootipsEl.style.display = "none";
+    }
+  };
+  const registerMouseMove = (event: paper.MouseEvent | any) => {
+    initTooltips(event);
+  };
+  const registerItemMouseEvent = (item: paper.Item) => {
+    // 每个item添加按下鼠标事件
+    item.onMouseDown = registerMouseDown;
+    // 每个item添加鼠标拖动事件
+    item.onMouseDrag = (event: paper.MouseEvent | any) => {
+      registerMouseDrag(event, item);
+    };
+    item.onMouseEnter = registerMouseEnter;
+    item.onMouseLeave = registerMouseLeave;
+    item.onMouseMove = registerMouseMove;
+  };
+  const initTooltips = (event: any) => {
+    if (!config.tooltips) {
+      return;
+    }
+    let tootipsEl = document.querySelector(".tootips") as HTMLElement;
+    if (!tootipsEl) {
+      tootipsEl = document.createElement("div");
+      document.body.appendChild(tootipsEl);
+      tootipsEl.innerHTML =
+        typeof config.tooltips === "string"
+          ? config.tooltips
+          : config.tooltips();
+      tootipsEl.className = "tootips";
+      tootipsEl.style.position = "absolute";
+      tootipsEl.style.left = event.event.offsetX + 10 + "px";
+      tootipsEl.style.top = event.event.offsetY + 10 + "px";
+      tootipsEl.style.color = "#999";
+    } else {
+      tootipsEl.style.display = "block";
+      tootipsEl.style.left = event.event.offsetX + 10 + "px";
+      tootipsEl.style.top = event.event.offsetY + 10 + "px";
+    }
+  };
   // const screenShot = () => {
   //   // 获取svg元素，将整个canvas导出为svg
   //   const flash = paperInstance.value.project.exportSVG();
@@ -679,6 +785,6 @@ export const usePaper = (config: PaperConfig) => {
     cursor,
     selectionGroup,
     addSelect,
-    registerMouseEvent,
+    registerItemMouseEvent,
   };
 };

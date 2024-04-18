@@ -22,7 +22,7 @@ const config = reactive({
     return "123";
   },
 });
-const { canvasEl, cursor, registerMouseEvent } = usePaper(config);
+const { canvasEl, cursor, registerItemMouseEvent } = usePaper(config);
 
 const drawAnimate = () => {
   const node = new Paper.Path.Circle({
@@ -171,6 +171,7 @@ const drawCurve = () => {
   curve1.style.strokeCap = "round"; //圆角
 
   group.addChildren([earth, curve1]);
+  return group;
 };
 
 const drawAnimateLine = () => {
@@ -229,8 +230,8 @@ onMounted(() => {
   drawAnimate();
   drawArc();
   setTimeout(() => {
-    drawCurve(); //注册事件之后画出来 不会响应事件
-    // registerMouseEvent(); //需要重新注册一下事件
+    const g = drawCurve(); //注册事件之后画出来 不会响应事件
+    registerItemMouseEvent(g); //需要重新注册一下事件
   }, 3000);
 });
 </script>
