@@ -6,6 +6,7 @@ import { ElementPlusResolver } from "unplugin-vue-components/resolvers";
 import { resolve } from "path";
 import UnoCSS from "unocss/vite";
 import cesium from "vite-plugin-cesium";
+import vueJsx from "@vitejs/plugin-vue-jsx";
 
 const INVALID_CHAR_REGEX = /[\u0000-\u001F"#$&*+,:;<=>?[\]^`{|}\u007F]/g;
 const DRIVE_LETTER_REGEX = /^[a-z]:/i;
@@ -22,6 +23,7 @@ export default defineConfig({
     }),
     UnoCSS(),
     cesium(),
+    vueJsx(),
   ],
   resolve: {
     // ↓路径别名
