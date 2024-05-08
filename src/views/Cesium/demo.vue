@@ -12,6 +12,7 @@ export default { name: "Cesium" };
 import * as Cesium from "cesium";
 import { onMounted, ref } from "vue";
 import danger from "../../assets/danger.svg";
+import CesiumNavigation from "cesium-navigation-es6";
 
 let viewer: Cesium.Viewer;
 const tooltips = ref<HTMLElement>();
@@ -71,6 +72,21 @@ const init = async () => {
   viewer.camera.setView({
     destination: Cesium.Cartesian3.fromDegrees(104.045034, 30.540885, 1000),
   });
+  const options = {
+    duration: 1, // 默认为3s 相机延时
+    enableCompass: true, //罗盘
+    enableZoomControls: true, //缩放
+    enableDistanceLegend: true, //比例尺
+    enableCompassOuterRing: true, //指南针外环
+    // 修改重置视图的tooltip
+    resetTooltip: "重置视图",
+    // 修改放大按钮的tooltip
+    zoomInTooltip: "放大",
+    // 修改缩小按钮的tooltip
+    zoomOutTooltip: "缩小",
+  };
+  console.log(CesiumNavigation);
+  let thing = new CesiumNavigation(viewer, options);
   initPoint();
   initBox();
   initEvent();

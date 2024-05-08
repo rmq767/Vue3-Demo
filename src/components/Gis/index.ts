@@ -7,6 +7,36 @@ import {
 import * as Cesium from "cesium";
 import { Ref, ref } from "vue";
 
+/**
+ * @description gis筛选类型
+ */
+export const filterType = [
+  {
+    label: "方案",
+    value: "plan",
+  },
+  {
+    label: "区块",
+    value: "block",
+  },
+  {
+    label: "平台",
+    value: "platform",
+  },
+  {
+    label: "井号",
+    value: "well",
+  },
+  {
+    label: "管道",
+    value: "pipeline",
+  },
+  {
+    label: "设备",
+    value: "device",
+  },
+];
+
 export const Token =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI5NGI2Y2QzZS01NDNhLTQzNjItOWQ4ZC1hYTk2ZDJkMjg2NjEiLCJpZCI6MjAxODIxLCJpYXQiOjE3MTAzOTkxNDJ9.QfyFdDreE7x97CtwJtX_z3XcLpwfqfadhdtnIWHRBiU";
 

@@ -45,7 +45,7 @@ export default { name: "InputSearch" };
 <script lang="ts" setup>
 import { ref } from "vue";
 import { Search } from "@element-plus/icons-vue";
-import { filterType } from "../views/Cesium/index";
+import { filterType } from "./index";
 
 const props = defineProps({
   filter: {
@@ -117,7 +117,7 @@ defineExpose({
 </script>
 
 <style lang="scss" scoped>
-:deep(.search-input .el-select__wrapper) {
+:deep(.search-input .el-input__wrapper) {
   border-radius: 0;
   box-shadow: 0 0 0 1px var(--el-color-primary) inset;
   background-color: rgba(27, 27, 27, 0.8);
@@ -128,7 +128,7 @@ defineExpose({
     color: #fff;
   }
 }
-:deep(.search-select .el-select__wrapper) {
+:deep(.search-select .el-input__wrapper) {
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
   box-shadow: 1px 1px 0 0 var(--el-color-primary) inset,
@@ -140,6 +140,9 @@ defineExpose({
   .el-select__caret {
     color: #fff;
   }
+}
+:deep(.el-input__inner) {
+  color: #fff;
 }
 .el-button {
   border-top-left-radius: 0px;
@@ -159,5 +162,8 @@ defineExpose({
     background-color: rgba(63, 63, 63, 0.7);
     border-color: var(--el-color-primary);
   }
+}
+:deep(.el-select-dropdown__item.hover, .el-select-dropdown__item:hover) {
+  background-color: rgba(63, 63, 63, 0.7);
 }
 </style>

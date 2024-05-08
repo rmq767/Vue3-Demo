@@ -4,13 +4,14 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host",
     "build": "vue-tsc && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
     "@antv/g6": "^4.8.24",
     "@element-plus/icons-vue": "^2.3.1",
+    "cesium-navigation-es6": "^3.0.9",
     "coordtransform": "^2.1.2",
     "dayjs": "^1.11.10",
     "dhtmlx-gantt": "^8.0.6",
