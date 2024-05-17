@@ -9,43 +9,21 @@
     @close="close"
     class="gis-dialog"
     destroy-on-close
+    :append-to-body="true"
   >
     <div id="cesium-container">
       <div id="cesium"></div>
-      <!-- <div class="filter">
-        <InputSearch :filter="true" @search="search" />
-      </div>
-      <div class="search">
-        <InputSearch @search="search" />
-      </div> -->
       <div class="shortcut-keys">
         <el-button-group>
-          <el-popover
-            placement="bottom"
-            :popper-style="{
-              minWidth: '80px',
-              width: '80px',
-            }"
-            trigger="click"
-            :teleported="false"
-          >
-            <template #reference>
-              <el-button :icon="Menu" />
-            </template>
-            <el-checkbox-group v-model="state.check">
-              <el-checkbox
-                v-for="item in filterType"
-                :key="item.value"
-                :label="item.label"
-                :value="item.value"
-              />
-            </el-checkbox-group>
-          </el-popover>
-          <el-button :icon="Cpu" @click="loadRoadMap" />
-          <el-button :icon="Compass" @click="toNorth" />
-          <el-button :icon="ZoomIn" @click="zoom('zoomIn')" />
-          <el-button :icon="ZoomOut" @click="zoom('zoomOut')" />
-          <el-button :icon="FullScreen" @click="fullScreen" />
+          <el-button title="文字图层控制" :icon="Cpu" @click="loadRoadMap" />
+          <el-button title="定位" :icon="Compass" @click="toNorth" />
+          <el-button title="放大" :icon="ZoomIn" @click="zoom('zoomIn')" />
+          <el-button title="缩小" :icon="ZoomOut" @click="zoom('zoomOut')" />
+          <el-button
+            title="全屏控制"
+            @click="fullScreen"
+            :icon="FullScreen"
+          ></el-button>
         </el-button-group>
       </div>
       <el-button type="primary" class="save" @click="save">保存</el-button>
@@ -58,33 +36,41 @@ export default { name: "Cesium" };
 </script>
 <script lang="ts" setup>
 import { reactive } from "vue";
-import { useDrawAndGetData, initCesium, filterType } from "./index";
 import {
-  Menu,
+  useDrawAndGetData,
+  initCesium,
+  getCartesian3FromDegrees,
+  getCenterPoint,
+  useDraw,
+} from "./index";
+import {
   Cpu,
   Compass,
-  FullScreen,
   ZoomIn,
   ZoomOut,
+  FullScreen,
 } from "@element-plus/icons-vue";
-// import InputSearch from "./inputSearch.vue";
-import { CesiumDataItem, CesiumDataType, CesiumFilterType } from "@/types/gis";
+import {
+  CesiumData,
+  CesiumDataItem,
+  CesiumDataType,
+  CesiumFilterType,
+  MyConstructorOptions,
+} from "@/types/gis";
 import { nextTick } from "vue";
-import { shallowRef } from "vue";
 
 const state = reactive({
   filter: "",
-  type: "" as CesiumFilterType,
+  type: undefined as CesiumFilterType | undefined,
   search: "",
   radio: "",
-  check: [0, 1, 2, 3, 4, 5],
   visible: false,
   drawType: CesiumDataType.Point as CesiumDataType,
+  isFull: false,
 });
-let { viewer, zoomFn, loadRoadNetwork, destroyed, init, adjustNorthUp } =
+let { viewer, zoomFn, loadRoadNetwork, destroyed, init, adjustNorthUp, flyTo } =
   initCesium();
-const { data, initEvent, reDraw } = useDrawAndGetData(viewer);
-// const { drawArea, drawPoint, drawLine } = useDraw(viewer);
+const { data, initEvent, reDraw, reset } = useDrawAndGetData(viewer);
 
 const emits = defineEmits(["save"]);
 
@@ -96,10 +82,12 @@ const fullScreen = () => {
   var isFull = document.fullscreenElement;
   if (isFull) {
     document.exitFullscreen();
+    state.isFull = false;
   } else {
     const element = document.getElementById("cesium-container")!;
     if (element.requestFullscreen) {
       element.requestFullscreen();
+      state.isFull = true;
     }
   }
 };
@@ -109,15 +97,14 @@ const toNorth = () => {
 const loadRoadMap = () => {
   loadRoadNetwork();
 };
-const search = (data: any) => {
-  console.log(data);
-};
+
 const save = () => {
   emits("save", data.value);
   close();
 };
 
 const close = () => {
+  reset();
   destroyed();
   data.value = [];
   state.visible = false;
@@ -127,14 +114,22 @@ const close = () => {
  * @description 编辑的时候 重绘出来
  */
 const drawOldGis = (data: CesiumDataItem[]) => {
+  if (!data.length) {
+    return;
+  }
   const oldData = data.map((item, index) => {
     return {
-      degrees: [item.longitude, item.latitude],
+      degrees: [item.lon, item.lat],
       index,
       data: item.flag,
     };
   });
   reDraw(oldData, state.drawType);
+  const Cartesian3Arr = data.map((item) =>
+    getCartesian3FromDegrees([item.lon, item.lat])
+  );
+  const [longitude, latitude] = getCenterPoint(Cartesian3Arr);
+  flyTo(longitude, latitude);
 };
 
 const open = (type: CesiumDataType, data?: CesiumDataItem[]) => {
@@ -143,7 +138,6 @@ const open = (type: CesiumDataType, data?: CesiumDataItem[]) => {
   nextTick(() => {
     // 初始化cesium
     init();
-    viewer = shallowRef(viewer.value);
     // 初始化鼠标一些事件
     initEvent(state.drawType);
     // 编辑重绘

@@ -1,18 +1,18 @@
-import * as Cesium from 'cesium';
+import * as Cesium from "cesium";
 
 export enum CesiumDataType {
-  Point = 'point',
-  Polyline = 'polyline',
-  Polygon = 'polygon'
+  Point = "point",
+  Polyline = "polyline",
+  Polygon = "polygon",
 }
 
 export enum CesiumFilterType {
-  Plan = 'plan',
-  Block = 'block',
-  Platform = 'platform',
-  Well = 'well',
-  Pipeline = 'pipeline',
-  Device = 'device'
+  Plan,
+  Block,
+  Platform,
+  Well,
+  Pipeline,
+  Device,
 }
 
 export interface CesiumConfig {
@@ -28,15 +28,14 @@ export interface CesiumDrawGetData {
 export interface CesiumData {
   type: CesiumFilterType;
   name: string;
-  id?: string;
-  data?: CesiumDataItem[];
-  children?: CesiumData[];
+  businessId?: string;
+  legendUrl?: string;
+  pointData: CesiumDataItem[];
 }
 
 export interface CesiumDataItem {
-  longitude: number;
-  latitude: number;
-  name: string;
+  lon: number;
+  lat: number;
   id?: string;
   flag?: string;
   remark?: string;
@@ -45,4 +44,19 @@ export interface CesiumDataItem {
 export interface MyConstructorOptions extends Cesium.Entity {
   data?: any;
   type?: CesiumFilterType;
+  isStatic?: boolean;
+}
+/**
+ * @description 大屏根据类型获取下拉
+ */
+export interface ScreenOptionParams {
+  type: number;
+  businessName: string;
+}
+/**
+ * @description 获取大屏数据
+ */
+export interface ScreenDataParams {
+  type: number;
+  businessId: string;
 }
