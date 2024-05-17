@@ -66,8 +66,9 @@ const changeType = () => {
   width: 100%;
   // height: 100%;
   .code {
-    min-height: 40vh;
-    margin-bottom: 20px;
+    min-height: 30vh;
+    width: 80%;
+    margin: 20px auto;
   }
 }
 .handle {

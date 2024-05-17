@@ -8,5 +8,5 @@
 [在线浏览](https://rmq767.github.io/Vue3-Demo/#/paper/index)
 
 ### Cesium的博客地址
-[Vue3中使用cesium]()
+[Vue3中使用cesium](https://blog.csdn.net/qq_44775782/article/details/138565105)
 [在线浏览](https://rmq767.github.io/Vue3-Demo/#/cesium/getData)

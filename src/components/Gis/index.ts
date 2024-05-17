@@ -14,12 +14,12 @@ export const Token =
 
 /**
  * @description 初始化cesium
- * @param {CesiumConfig} [config] 聚焦点
+ * @param {CesiumConfig} [config] 聚焦点/缩放/飞行高度
  * @return {*}
  */
 export const initCesium = (config?: CesiumConfig) => {
-  const viewer = shallowRef<Cesium.Viewer>();
-  const roadMap = shallowRef<Cesium.ImageryLayer>();
+  const viewer = shallowRef<Cesium.Viewer>(); //浅层响应式
+  const roadMap = shallowRef<Cesium.ImageryLayer>(); //浅层响应式
   const hasRoadMap = ref(true);
   const defaultConfig = {
     lookAt: [108.904967, 34.313311, 500_0000], //首次聚焦位置
