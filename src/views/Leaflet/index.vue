@@ -29,7 +29,7 @@ const options = [
   { label: "天地图影像", value: "天地图影像" },
 ];
 
-const changeMap = (m: string | number | boolean) => {
+const changeMap = (m: string | number | boolean | undefined) => {
   map?.remove();
   switch (m) {
     case "高德地图":
@@ -42,7 +42,7 @@ const changeMap = (m: string | number | boolean) => {
       initMap([osmNormalMap]);
       break;
     case "天地图":
-      initMap([tdtNormal]);
+      initMap([tdtNormal1]);
       break;
     case "天地图影像":
       initMap([tdtNormalImg]);
@@ -62,45 +62,63 @@ const coordTransform = (coord: [number, number]) => {
 
 // 图层
 // 高德
-var gaodeNormal = Leaflet.tileLayer.chinaProvider("GaoDe.Normal.Map", {
+var gaodeNormal = (Leaflet.tileLayer as any).chinaProvider("GaoDe.Normal.Map", {
   maxZoom: 18,
   minZoom: 5,
 });
-var gaodeImgm = Leaflet.tileLayer.chinaProvider("GaoDe.Satellite.Map", {
-  maxZoom: 18,
-  minZoom: 5,
-});
-var gaodeImga = Leaflet.tileLayer.chinaProvider("GaoDe.Satellite.Annotion", {
-  maxZoom: 18,
-  minZoom: 5,
-});
+var gaodeImgm = (Leaflet.tileLayer as any).chinaProvider(
+  "GaoDe.Satellite.Map",
+  {
+    maxZoom: 18,
+    minZoom: 5,
+  }
+);
+var gaodeImga = (Leaflet.tileLayer as any).chinaProvider(
+  "GaoDe.Satellite.Annotion",
+  {
+    maxZoom: 18,
+    minZoom: 5,
+  }
+);
 // osm
-var osmNormal = Leaflet.tileLayer.chinaProvider("OSM.Normal.Map", {
+var osmNormal = (Leaflet.tileLayer as any).chinaProvider("OSM.Normal.Map", {
   maxZoom: 18,
   minZoom: 5,
 });
 // 天地图
-var tdtNormal = Leaflet.tileLayer.chinaProvider("TianDiTu.Normal.Map", {
-  maxZoom: 18,
-  minZoom: 5,
-});
-var tdtNormala = Leaflet.tileLayer.chinaProvider("TianDiTu.Normal.Annotion", {
-  maxZoom: 18,
-  minZoom: 5,
-});
-var tdtImgm = Leaflet.tileLayer.chinaProvider("TianDiTu.Satellite.Map", {
-  maxZoom: 18,
-  minZoom: 5,
-});
-var tdtImga = Leaflet.tileLayer.chinaProvider("TianDiTu.Satellite.Annotion", {
-  maxZoom: 18,
-  minZoom: 5,
-});
+var tdtNormal = (Leaflet.tileLayer as any).chinaProvider(
+  "TianDiTu.Normal.Map",
+  {
+    maxZoom: 18,
+    minZoom: 5,
+  }
+);
+var tdtNormala = (Leaflet.tileLayer as any).chinaProvider(
+  "TianDiTu.Normal.Annotion",
+  {
+    maxZoom: 18,
+    minZoom: 5,
+  }
+);
+var tdtImgm = (Leaflet.tileLayer as any).chinaProvider(
+  "TianDiTu.Satellite.Map",
+  {
+    maxZoom: 18,
+    minZoom: 5,
+  }
+);
+var tdtImga = (Leaflet.tileLayer as any).chinaProvider(
+  "TianDiTu.Satellite.Annotion",
+  {
+    maxZoom: 18,
+    minZoom: 5,
+  }
+);
 
 var gdNormal = Leaflet.layerGroup([gaodeNormal]);
 var gdImage = Leaflet.layerGroup([gaodeImgm, gaodeImga]);
 var osmNormalMap = Leaflet.layerGroup([osmNormal]);
-var tdtNormal = Leaflet.layerGroup([tdtNormal, tdtNormala]);
+var tdtNormal1 = Leaflet.layerGroup([tdtNormal, tdtNormala]);
 var tdtNormalImg = Leaflet.layerGroup([tdtImgm, tdtImga]);
 
 const initMap = (layers?: Leaflet.Layer[]) => {

@@ -191,70 +191,76 @@ const initBox = () => {
 // 初始化事件
 const initEvent = () => {
   // 监听地图点击事件
-  viewer.screenSpaceEventHandler.setInputAction((click) => {
-    // 获取点击位置笛卡尔坐标
-    const cartesian = viewer.camera.pickEllipsoid(
-      click.position,
-      viewer.scene.globe.ellipsoid
-    );
-    // 获取点击位置的经纬度坐标
-    const cartographic = Cesium.Cartographic.fromCartesian(cartesian!);
-    const longitude = Cesium.Math.toDegrees(cartographic.longitude);
-    const latitude = Cesium.Math.toDegrees(cartographic.latitude);
+  viewer.screenSpaceEventHandler.setInputAction(
+    (click: Cesium.ScreenSpaceEventHandler.PositionedEvent) => {
+      // 获取点击位置笛卡尔坐标
+      const cartesian = viewer.camera.pickEllipsoid(
+        click.position,
+        viewer.scene.globe.ellipsoid
+      );
+      // 获取点击位置的经纬度坐标
+      const cartographic = Cesium.Cartographic.fromCartesian(cartesian!);
+      const longitude = Cesium.Math.toDegrees(cartographic.longitude);
+      const latitude = Cesium.Math.toDegrees(cartographic.latitude);
 
-    // 获取地图上的点位实体(entity)坐标
-    const pick = viewer.scene.pick(click.position);
-    // 如果pick不是undefined，那么就是点到点位了
-    if (pick && pick.id) {
-      // 定位到地图中心
-      // const data = {
-      //   layerId: "layer1", // 英文，且唯一,内部entity会用得到
-      //   lon: longitude,
-      //   lat: latitude,
-      //   element: "#one", // 弹框的唯一id
-      //   boxHeightMax: 0, // 中间立方体的最大高度
-      // };
-      tooltips.value!.style.display = "block";
-      tooltips.value!.style.left = `${click.position.x}px`;
-      tooltips.value!.style.top = `${click.position.y}px`;
-      tooltips.value!.innerHTML = `${pick.id.name}`;
+      // 获取地图上的点位实体(entity)坐标
+      const pick = viewer.scene.pick(click.position);
+      // 如果pick不是undefined，那么就是点到点位了
+      if (pick && pick.id) {
+        // 定位到地图中心
+        // const data = {
+        //   layerId: "layer1", // 英文，且唯一,内部entity会用得到
+        //   lon: longitude,
+        //   lat: latitude,
+        //   element: "#one", // 弹框的唯一id
+        //   boxHeightMax: 0, // 中间立方体的最大高度
+        // };
+        tooltips.value!.style.display = "block";
+        tooltips.value!.style.left = `${click.position.x}px`;
+        tooltips.value!.style.top = `${click.position.y}px`;
+        tooltips.value!.innerHTML = `${pick.id.name}`;
 
-      // 定位到地图中心
-      const pointLocation = new Cesium.BoundingSphere(
-        Cesium.Cartesian3.fromDegrees(longitude, latitude, 100),
-        1000
-      ); // 120.55538, 31.87532
-      viewer.camera.flyToBoundingSphere(pointLocation);
-    } else {
-      // 移除弹框
-      tooltips.value!.style.display = "none";
-    }
-
-    viewer.scene.preRender.addEventListener((e) => {
-      var scratch = new Cesium.Cartesian2();
-      var canvasPosition = viewer.scene.cartesianToCanvasCoordinates(
-        cartesian!,
-        scratch
-      ); // cartesianToCanvasCoordinates 笛卡尔坐标（3维度）到画布坐标
-      if (canvasPosition) {
-        tooltips.value!.style.left = `${canvasPosition.x}px`;
-        tooltips.value!.style.top = `${canvasPosition.y}px`;
+        // 定位到地图中心
+        const pointLocation = new Cesium.BoundingSphere(
+          Cesium.Cartesian3.fromDegrees(longitude, latitude, 100),
+          1000
+        ); // 120.55538, 31.87532
+        viewer.camera.flyToBoundingSphere(pointLocation);
+      } else {
+        // 移除弹框
+        tooltips.value!.style.display = "none";
       }
-    });
-  }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+      viewer.scene.preRender.addEventListener((e) => {
+        var scratch = new Cesium.Cartesian2();
+        var canvasPosition = viewer.scene.cartesianToCanvasCoordinates(
+          cartesian!,
+          scratch
+        ); // cartesianToCanvasCoordinates 笛卡尔坐标（3维度）到画布坐标
+        if (canvasPosition) {
+          tooltips.value!.style.left = `${canvasPosition.x}px`;
+          tooltips.value!.style.top = `${canvasPosition.y}px`;
+        }
+      });
+    },
+    Cesium.ScreenSpaceEventType.LEFT_CLICK
+  );
 
   // 鼠标移入事件
-  viewer.screenSpaceEventHandler.setInputAction((move) => {
-    // 获取地图上的点位实体(entity)坐标
-    const pick = viewer.scene.pick(move.endPosition);
-    // 如果pick不是undefined，那么就是点到点位了
-    if (pick && pick.id) {
-      (viewer as any)._container.style.cursor = "pointer";
-    } else {
-      // 移除弹框
-      (viewer as any)._container.style.cursor = "default";
-    }
-  }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+  viewer.screenSpaceEventHandler.setInputAction(
+    (move: Cesium.ScreenSpaceEventHandler.MotionEvent) => {
+      // 获取地图上的点位实体(entity)坐标
+      const pick = viewer.scene.pick(move.endPosition);
+      // 如果pick不是undefined，那么就是点到点位了
+      if (pick && pick.id) {
+        (viewer as any)._container.style.cursor = "pointer";
+      } else {
+        // 移除弹框
+        (viewer as any)._container.style.cursor = "default";
+      }
+    },
+    Cesium.ScreenSpaceEventType.MOUSE_MOVE
+  );
 };
 
 onMounted(() => {
