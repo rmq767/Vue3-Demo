@@ -7,6 +7,7 @@ export {}
 
 declare module 'vue' {
   export interface GlobalComponents {
+    CameraControl: typeof import('./src/components/Gis/components/cameraControl.vue')['default']
     Dialog: typeof import('./src/components/Dialog/index.vue')['default']
     ElButton: typeof import('element-plus/es')['ElButton']
     ElButtonGroup: typeof import('element-plus/es')['ElButtonGroup']
@@ -14,11 +15,15 @@ declare module 'vue' {
     ElCollapse: typeof import('element-plus/es')['ElCollapse']
     ElCollapseItem: typeof import('element-plus/es')['ElCollapseItem']
     ElDialog: typeof import('element-plus/es')['ElDialog']
+    ElIcon: typeof import('element-plus/es')['ElIcon']
     ElInput: typeof import('element-plus/es')['ElInput']
+    ElOption: typeof import('element-plus/es')['ElOption']
+    ElPopover: typeof import('element-plus/es')['ElPopover']
     ElProgress: typeof import('element-plus/es')['ElProgress']
     ElRadioButton: typeof import('element-plus/es')['ElRadioButton']
     ElRadioGroup: typeof import('element-plus/es')['ElRadioGroup']
     ElRow: typeof import('element-plus/es')['ElRow']
+    ElSelect: typeof import('element-plus/es')['ElSelect']
     ElTable: typeof import('element-plus/es')['ElTable']
     ElTableColumn: typeof import('element-plus/es')['ElTableColumn']
     ElTabPane: typeof import('element-plus/es')['ElTabPane']
@@ -26,9 +31,15 @@ declare module 'vue' {
     FnEditor: typeof import('./src/components/FnEditor/index.vue')['default']
     FnPanel: typeof import('./src/components/FnEditor/components/fn-panel.vue')['default']
     HelloWorld: typeof import('./src/components/HelloWorld.vue')['default']
+    InputSearch: typeof import('./src/components/Gis/components/inputSearch.vue')['default']
+    LengendDialog: typeof import('./src/components/Gis/components/lengend-dialog.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     ShowTable: typeof import('./src/components/ShowTable/index.vue')['default']
     Sign: typeof import('./src/components/Gis/sign.vue')['default']
+    Zoom: typeof import('./src/components/Gis/components/zoom.vue')['default']
+  }
+  export interface ComponentCustomProperties {
+    vLoading: typeof import('element-plus/es')['ElLoadingDirective']
   }
 }

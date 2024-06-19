@@ -27,11 +27,14 @@ export interface CesiumDrawGetData {
 
 export interface CesiumData {
   type: CesiumFilterType;
+  wellType: WellType;
   name: string;
   businessId?: string;
   legendUrl?: string;
   pointData: CesiumDataItem[];
 }
+
+export type WellType = "直井" | "水平井" | "定向井";
 
 export interface CesiumDataItem {
   lon: number;
@@ -44,13 +47,14 @@ export interface CesiumDataItem {
 export interface MyConstructorOptions extends Cesium.Entity {
   data?: any;
   type?: CesiumFilterType;
+  wellType?: WellType;
   isStatic?: boolean;
 }
 /**
  * @description 大屏根据类型获取下拉
  */
 export interface ScreenOptionParams {
-  type: number;
+  // type: number;
   businessName: string;
 }
 /**
