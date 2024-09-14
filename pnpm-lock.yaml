@@ -32,6 +32,9 @@ dependencies:
   grid-layout-plus:
     specifier: ^1.0.5
     version: 1.0.5(vue@3.4.5)
+  gsap:
+    specifier: ^3.12.5
+    version: 3.12.5
   html2canvas:
     specifier: ^1.4.1
     version: 1.4.1
@@ -2451,6 +2454,10 @@ packages:
       '@vexip-ui/utils': 2.16.1
       interactjs: 1.10.27
       vue: 3.4.5(typescript@5.3.3)
+    dev: false
+
+  /gsap@3.12.5:
+    resolution: {integrity: sha512-srBfnk4n+Oe/ZnMIOXt3gT605BX9x5+rh/prT2F1SsNJsU1XuMiP0E2aptW481OnonOGACZWBqseH5Z7csHxhQ==}
     dev: false
 
   /gzip-size@6.0.0:

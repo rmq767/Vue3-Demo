@@ -18,6 +18,7 @@
     "echarts": "^5.5.1",
     "element-plus": "^2.7.2",
     "grid-layout-plus": "^1.0.5",
+    "gsap": "^3.12.5",
     "html2canvas": "^1.4.1",
     "leaflet": "^1.9.4",
     "leaflet.chinatmsproviders": "^3.0.6",
