@@ -12,7 +12,7 @@
         <div
           ref="textRef"
           class="fn-editor"
-          :contenteditable="true"
+          contenteditable="true"
           @blur="onBlur"
         ></div>
         <div class="check">
@@ -37,7 +37,7 @@
           :data="state.tableData"
           :column="state.column"
           highlight-current-row
-          @current-change="handleCurrentChange"
+          @row-click="handleCurrentChange"
         >
         </ShowTable>
       </el-tab-pane>
@@ -47,7 +47,7 @@
           :data="state.tableData"
           :column="state.column"
           highlight-current-row
-          @current-change="handleCurrentChange"
+          @row-click="handleCurrentChange"
         >
         </ShowTable>
       </el-tab-pane>
@@ -125,17 +125,18 @@ const state = reactive({
   type: "combo" as "combo" | "basic",
 });
 const textRef = ref<HTMLDivElement>();
-const range = shallowRef<Range>();
-const selection = shallowRef<Selection | null>(null);
+let range = undefined as Range | undefined;
+let selection = null as Selection | null;
 const tableRef1 = ref<{ tableRef: TableInstance }>();
 const tableRef2 = ref<{ tableRef: TableInstance }>();
+let observer = undefined as MutationObserver | undefined;
 const emits = defineEmits(["submit"]);
 /**
  * @description 输入框失焦 获取到最后的输入框信息
  */
-const onBlur = () => {
-  selection.value = window.getSelection();
-  range.value = selection.value?.getRangeAt(0);
+const onBlur = (e: FocusEvent) => {
+  selection = window.getSelection();
+  range = selection?.getRangeAt(0).cloneRange();
 };
 /**
  * @description 点击参数展示到输入框
@@ -150,15 +151,17 @@ const getValue = ({ item, type }: any) => {
   // 创建一个文本节点
   const textNode = document.createTextNode(item.value);
   // 在光标位置插入文本节点
-  range.value!.insertNode(textNode);
+  range?.deleteContents();
+  range?.insertNode(textNode);
   // 移动光标到文本节点的末尾
-  range.value?.setStartAfter(textNode);
+  range?.setStartAfter(textNode);
+  range?.setEndAfter(textNode);
   // 折叠光标到文本节点的末尾
-  range.value?.collapse(true);
+  range?.collapse(true);
   // 移除所有选区 不移除selection会到聚焦点击的文本
-  selection.value?.removeAllRanges();
+  selection?.removeAllRanges();
   // 添加选区
-  selection.value?.addRange(range.value!);
+  selection?.addRange(range!);
 };
 /**
  * @description 点击参数展示到输入框
@@ -176,14 +179,15 @@ const getSpanTag = (params: DatabaseManagementParamsForm) => {
   let frag = document.createDocumentFragment();
   let node = frag.appendChild(el.firstChild!);
   // 插入tag
-  range.value?.insertNode(node);
+  range?.deleteContents();
+  range?.insertNode(node);
   // 设置光标
-  range.value?.setStartAfter(node);
-  range.value?.collapse(true);
+  range?.setStartAfter(node);
+  range?.collapse(true);
   // 不移除selection会到聚焦点击的文本
-  selection.value?.removeAllRanges();
+  selection?.removeAllRanges();
   // 添加选区
-  selection.value?.addRange(range.value!);
+  selection?.addRange(range!);
 };
 /**
  * @description 获取构建的html里面的文本和参数
@@ -193,6 +197,10 @@ const getTextAndParams = () => {
   const paramsEls = textRef.value?.getElementsByClassName("fn-param");
   // 获取文本的innerHTML
   let innerHTML = textRef.value!.innerHTML;
+  // 定义正则表达式，注意使用全局匹配标志 'g' 剔除最后的元素
+  let regex = /<span class="fake" contenteditable="false">[\s\S]*?<\/span>/g;
+  // 使用 replace 方法进行替换
+  innerHTML = innerHTML.replace(regex, "");
   // 定义参数数组
   const params = [];
   // 如果参数元素存在
@@ -266,13 +274,64 @@ const reviewFn = (data: FnEditorData) => {
   });
 };
 
+const addText = () => {
+  observer = new MutationObserver((mutationsList, observer) => {
+    for (const mutation of mutationsList) {
+      if (mutation.type === "characterData") {
+        setTimeout(() => {
+          const lastTextNode = textRef.value!.lastChild;
+          if (lastTextNode && lastTextNode.nodeType === Node.TEXT_NODE) {
+            const nodes = textRef.value?.childNodes;
+            nodes?.forEach((node: any) => {
+              if (node.className === "fake") {
+                textRef.value?.removeChild(node);
+              }
+            });
+            // 创建一个范围对象，并将其设置为包含最后一个字符后的位置
+            const range = document.createRange();
+            range.setStartAfter(lastTextNode);
+            range.setEndAfter(lastTextNode);
+
+            // 创建一个新元素，并插入到范围中
+            const newElement = document.createElement("span");
+            newElement.className = "fake";
+            newElement.contentEditable = "false";
+            newElement.textContent = "\u200B"; // 零宽字符，用于占位
+
+            // 插入新元素，并调整光标位置（如果需要）
+            range.deleteContents(); // 实际上这里不需要删除内容，因为我们是在字符后插入
+            range.insertNode(newElement);
+
+            // 将光标移动到新元素之后（可选）
+            const selection = window.getSelection();
+            range.setStartAfter(newElement);
+            range.setEndAfter(newElement);
+            selection?.removeAllRanges();
+            selection?.addRange(range);
+          }
+        }, 100);
+      }
+    }
+  });
+  observer.observe(textRef.value!, {
+    characterData: true, // 监视文本节点的变化
+    subtree: true, // 监视目标节点及其所有后代节点的变化
+  });
+};
+
 const open = (type: "combo" | "basic", data?: FnEditorData) => {
   state.type = type;
   state.visible = true;
   data && reviewFn(data);
   !data &&
     setTimeout(() => {
+      // 创建一个隐藏的文本节点 解决中文输入2次问题
+      // 先在输入框中随便输入字符，然后插入标签，再输入中文字符会出现2次。
+      // 出现2次的中文字符 没有触发完整的中文输入事件compositionstart->compositionend，而是触发了start就结束了。并且只会在《最后》是《中文符号或者拼写》是才会出现。
+      // 所以需要先在最后插入一个文本节点，然后focus，再输入中文，就不会出现2次了。
+      // 但是，还是不清楚根本原因，只能暂时这样解决
       textRef.value?.focus();
+      addText();
     }, 0);
 };
 const close = () => {
@@ -280,6 +339,7 @@ const close = () => {
   state.search = "";
   textRef.value!.innerHTML = "";
   state.visible = false;
+  observer?.disconnect();
 };
 
 const handleClick = (tab: TabsPaneContext, event: Event) => {
