@@ -281,6 +281,7 @@ const addText = () => {
         setTimeout(() => {
           const lastTextNode = textRef.value!.lastChild;
           if (lastTextNode && lastTextNode.nodeType === Node.TEXT_NODE) {
+            // 清除之前的fake节点，因为可能通过光标移动导致多个fake节点
             const nodes = textRef.value?.childNodes;
             nodes?.forEach((node: any) => {
               if (node.className === "fake") {
@@ -295,17 +296,17 @@ const addText = () => {
             // 创建一个新元素，并插入到范围中
             const newElement = document.createElement("span");
             newElement.className = "fake";
-            newElement.contentEditable = "false";
+            newElement.contentEditable = "false"; // 设置为不可编辑 否则光标左右移动会进入这个元素进行编辑
             newElement.textContent = "\u200B"; // 零宽字符，用于占位
 
-            // 插入新元素，并调整光标位置（如果需要）
+            // 插入新元素，并调整光标位置
             range.deleteContents(); // 实际上这里不需要删除内容，因为我们是在字符后插入
             range.insertNode(newElement);
-
-            // 将光标移动到新元素之后（可选）
-            const selection = window.getSelection();
             range.setStartAfter(newElement);
             range.setEndAfter(newElement);
+
+            // 将光标移动到新元素之后
+            const selection = window.getSelection();
             selection?.removeAllRanges();
             selection?.addRange(range);
           }
