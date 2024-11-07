@@ -107,7 +107,7 @@ const validateNodeName = (e: FocusEvent) => {
 /**
  * @description 传阅者来源
  */
-const changeReaderSource = (value: string) => {
+const changeReaderSource = (value: string | number | boolean | undefined) => {
   props.lf?.setProperties(props.data.id, {
     reviewerSource: value,
   });

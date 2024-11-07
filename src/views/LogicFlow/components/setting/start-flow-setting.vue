@@ -43,7 +43,7 @@ import { ref, watch } from "vue";
 import { startFlowMoreAction } from "../../index";
 import LogicFlow from "@logicflow/core";
 import ChoosePerson from "../choose-person.vue";
-import { ElMessage } from "element-plus";
+import { CheckboxValueType, ElMessage } from "element-plus";
 import { MyLogicFlowPropertiesType } from "@/types/logic-flow";
 
 const props = defineProps<{
@@ -113,7 +113,7 @@ const validateNodeName = (e: FocusEvent) => {
 /**
  * @description 更多操作
  */
-const changeMoreAction = (val: string[]) => {
+const changeMoreAction = (val: CheckboxValueType[]) => {
   props.lf?.setProperties(props.data.id, {
     startMoreAction: val,
   });

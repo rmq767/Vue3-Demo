@@ -21,3 +21,6 @@
 
 ### GSAP滚动动画
 [在线浏览](https://rmq767.github.io/Vue3-Demo/#/gsap/scroll)
+
+### LogicFlow流程图
+[在线浏览](https://rmq767.github.io/Vue3-Demo/#/logicflow/index)

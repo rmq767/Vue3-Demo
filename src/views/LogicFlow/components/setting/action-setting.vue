@@ -92,7 +92,7 @@ import { ref, watch } from "vue";
 import { baseAction, auditMoreAction } from "../../index";
 import LogicFlow from "@logicflow/core";
 import ChoosePerson from "../choose-person.vue";
-import { ElMessage } from "element-plus";
+import { CheckboxValueType, ElMessage } from "element-plus";
 import { MyLogicFlowPropertiesType } from "@/types/logic-flow";
 
 const props = defineProps<{
@@ -180,7 +180,7 @@ const validateNodeName = (e: FocusEvent) => {
 /**
  * @description 审核者来源
  */
-const changeReviewerSource = (value: string) => {
+const changeReviewerSource = (value: string | number | boolean | undefined) => {
   props.lf?.setProperties(props.data.id, {
     reviewerSource: value,
   });
@@ -193,7 +193,7 @@ const changeReviewerSource = (value: string) => {
 /**
  * @description 多人审核方式
  */
-const changeAuditMethod = (value: string) => {
+const changeAuditMethod = (value: string | number | boolean | undefined) => {
   props.lf?.setProperties(props.data.id, {
     auditMethod: value,
   });
@@ -201,7 +201,7 @@ const changeAuditMethod = (value: string) => {
 /**
  * @description 审核过流程
  */
-const changePass = (value: string) => {
+const changePass = (value: string | number | boolean | undefined) => {
   props.lf?.setProperties(props.data.id, {
     pass: value,
   });
@@ -209,7 +209,7 @@ const changePass = (value: string) => {
 /**
  * @description 基本操作
  */
-const changeBaseAction = (val: string[]) => {
+const changeBaseAction = (val: CheckboxValueType[]) => {
   props.lf?.setProperties(props.data.id, {
     baseAction: val,
   });
@@ -217,7 +217,7 @@ const changeBaseAction = (val: string[]) => {
 /**
  * @description 退回操作
  */
-const changeBackAction = (value: string) => {
+const changeBackAction = (value: string | number | boolean | undefined) => {
   props.lf?.setProperties(props.data.id, {
     backAction: value,
   });
@@ -225,7 +225,7 @@ const changeBackAction = (value: string) => {
 /**
  * @description 更多操作
  */
-const changeMoreAction = (val: string[]) => {
+const changeMoreAction = (val: CheckboxValueType[]) => {
   props.lf?.setProperties(props.data.id, {
     moreAction: val,
   });

@@ -69,7 +69,7 @@ const changeConditionName = (e: FocusEvent) => {
 /**
  * @description 是否使用其他
  */
-const changeUseOther = (value: boolean) => {
+const changeUseOther = (value: string | number | boolean | undefined) => {
   // 获取边的model
   const model = props.lf?.getEdgeModelById(props.data.id);
   // 获取父节点的id
