@@ -49,6 +49,9 @@ watch(
       useOther: useOther || false,
       condition: condition || "",
     };
+    props.lf?.setProperties(newVal.id, {
+      ...form.value,
+    });
   },
   {
     immediate: true,

@@ -11,10 +11,12 @@ export default { name: "Setting" };
 import { SettingType } from "@/types/logic-flow";
 import LogicFlow from "@logicflow/core";
 import { computed } from "vue";
-import FlowSetting from "./flow-setting.vue";
-import StartFlowSetting from "./start-flow-setting.vue";
-import ActionSetting from "./action-setting.vue";
-import EdgeSetting from "./edge-setting.vue";
+import FlowSetting from "./setting/flow-setting.vue";
+import StartFlowSetting from "./setting/start-flow-setting.vue";
+import ActionSetting from "./setting/action-setting.vue";
+import EdgeSetting from "./setting/edge-setting.vue";
+import LinkSetting from "./setting/link-setting.vue";
+import ReviewSetting from "./setting/review-setting.vue";
 
 const props = defineProps<{
   lf?: LogicFlow;
@@ -34,9 +36,13 @@ const component = computed(() => {
       comp = StartFlowSetting;
       break;
     case "approver":
-    case "link":
-    case "review":
       comp = ActionSetting;
+      break;
+    case "link":
+      comp = LinkSetting;
+      break;
+    case "review":
+      comp = ReviewSetting;
       break;
     case "polyline":
     case "dashedLine":

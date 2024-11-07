@@ -117,10 +117,11 @@ const open = (checked: string[]) => {
 };
 const close = () => {
   state.visible = false;
+  state.filterText = "";
 };
 const submit = () => {
-  state.visible = false;
   emits("submit", state.checked, state.checkedList);
+  close();
 };
 /**
  * @description 筛选节点
@@ -133,9 +134,11 @@ const filterNode = (value: string, data: Tree) => {
  * @description 选中节点
  */
 const checkChange = () => {
+  // 已选的id string[] 用来提交
   state.checked = treeRef.value
     ?.getCheckedNodes(true, false)
     .map((item) => item.key) as string[];
+  // 已选的对象 {label: string; key: string}[] 用来展示tag
   state.checkedList = treeRef.value
     ?.getCheckedNodes(true, false)
     .map((item) => {

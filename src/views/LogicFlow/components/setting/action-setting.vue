@@ -89,9 +89,9 @@ export default { name: "ActionSetting" };
 </script>
 <script lang="ts" setup>
 import { ref, watch } from "vue";
-import { baseAction, auditMoreAction } from "../index";
+import { baseAction, auditMoreAction } from "../../index";
 import LogicFlow from "@logicflow/core";
-import ChoosePerson from "./choose-person.vue";
+import ChoosePerson from "../choose-person.vue";
 import { ElMessage } from "element-plus";
 import { MyLogicFlowPropertiesType } from "@/types/logic-flow";
 
@@ -135,6 +135,9 @@ watch(
       backAction: backAction || "1",
       moreAction: moreAction || ["back"],
     };
+    props.lf?.setProperties(newVal.id, {
+      ...form.value,
+    });
   },
   {
     immediate: true,

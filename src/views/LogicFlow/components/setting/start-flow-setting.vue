@@ -40,9 +40,9 @@ export default { name: "StartFlowSetting" };
 </script>
 <script lang="ts" setup>
 import { ref, watch } from "vue";
-import { startFlowMoreAction } from "../index";
+import { startFlowMoreAction } from "../../index";
 import LogicFlow from "@logicflow/core";
-import ChoosePerson from "./choose-person.vue";
+import ChoosePerson from "../choose-person.vue";
 import { ElMessage } from "element-plus";
 import { MyLogicFlowPropertiesType } from "@/types/logic-flow";
 
@@ -68,6 +68,9 @@ watch(
       initiatorString: initiatorString || "",
       startMoreAction: startMoreAction || ["back"],
     };
+    props.lf?.setProperties(newVal.id, {
+      ...form.value,
+    });
   },
   {
     immediate: true,
@@ -77,7 +80,7 @@ watch(
  * @description 选择发起人
  */
 const choosePerson = () => {
-  choosePersonRef.value?.open();
+  choosePersonRef.value?.open(form.value.initiator);
 };
 const getPerson = (checked: string[], list: any[]) => {
   form.value.initiator = checked;

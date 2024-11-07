@@ -770,3 +770,17 @@ export const auditMoreAction = [
     value: "circulate",
   },
 ];
+
+/**
+ * @description 必填项
+ */
+export const requiredConfig = {
+  initiator: "发起者必填",
+  reviewerSource: "审核者来源必填",
+  reviewer: "审核者必填",
+  auditMethod: "多人审核方式必填",
+  baseAction: "基本操作必填",
+  backAction: "退回操作必填",
+  readerSource: "传阅者来源必填",
+  reader: "传阅者必填",
+} as any;

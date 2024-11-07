@@ -1,5 +1,9 @@
 <template>
   <div class="logic-flow-container">
+    <div class="logic-flow-header">
+      <el-button type="primary" @click="getData">获取数据</el-button>
+      <el-button type="primary" @click="submit">提交</el-button>
+    </div>
     <div class="logic-flow-main">
       <div class="logic-flow" ref="logicFlowRef"></div>
       <Setting
@@ -8,8 +12,8 @@
         :lf="lf"
         :type="state.settingType"
       ></Setting>
+      <NodePanel :lf="lf"></NodePanel>
     </div>
-    <NodePanel :lf="lf"></NodePanel>
     <!-- 当lf有值 才能注册事件 -->
     <Control v-if="lf" :lf="lf"></Control>
   </div>
@@ -24,7 +28,7 @@ import "@logicflow/core/lib/style/index.css";
 import "@logicflow/extension/lib/style/index.css";
 import { onMounted, reactive, ref, ShallowRef, shallowRef } from "vue";
 import NodePanel from "./components/node-panel.vue";
-import { registeNode, registerKeyboard } from "./index";
+import { registeNode, registerKeyboard, requiredConfig } from "./index";
 import { ElMessage } from "element-plus";
 import Control from "./components/control.vue";
 import Setting from "./components/setting.vue";
@@ -87,6 +91,41 @@ const initEvent = (lf: ShallowRef<LogicFlow | undefined>) => {
     getSettingInfo(data);
     lf.value?.container.focus(); // 聚焦 能够使用键盘操作
   });
+};
+/**
+ * @description 获取数据
+ */
+const getData = () => {
+  console.log(lf.value?.getGraphData());
+};
+/**
+ * @description 提交 验证数据
+ */
+const submit = () => {
+  const { nodes } = lf.value?.getGraphData() as LogicFlow.GraphData;
+  for (let index = 0; index < nodes.length; index++) {
+    const data = nodes[index];
+    const { properties } = data;
+    // 循环配置项
+    for (const key in properties) {
+      // 数组配置项 判断是否为空
+      if (Array.isArray(properties[key])) {
+        if (requiredConfig[key] && properties[key].length === 0) {
+          return ElMessage.error(
+            `${data.text?.value}节点 ${requiredConfig[key]}`
+          );
+        }
+      } else {
+        // 非数组配置项 判断是否为空
+        if (requiredConfig[key] && !properties[key]) {
+          return ElMessage.error(
+            `${data.text?.value}节点 ${requiredConfig[key]}`
+          );
+        }
+      }
+    }
+  }
+  console.log(lf.value?.getGraphData());
 };
 
 onMounted(() => {
@@ -172,10 +211,19 @@ onMounted(() => {
 .logic-flow-container {
   width: 100%;
   height: 100%;
+  .logic-flow-header {
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    border-bottom: 1px solid #ccc;
+    padding: 0 20px;
+  }
   .logic-flow-main {
     display: flex;
     width: 100%;
-    height: 100%;
+    height: calc(100% - 54px);
+    position: relative;
     .logic-flow-setting {
       flex-basis: 400px;
       flex-shrink: 0;

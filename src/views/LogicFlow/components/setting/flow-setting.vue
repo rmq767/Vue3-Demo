@@ -40,7 +40,7 @@ export default { name: "FlowSetting" };
 <script lang="ts" setup>
 import LogicFlow from "@logicflow/core";
 import { ref } from "vue";
-import { flowAction } from "../index";
+import { flowAction } from "../../index";
 
 const props = defineProps<{
   lf?: LogicFlow;
