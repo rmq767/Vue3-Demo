@@ -3,6 +3,20 @@
 > 文件路径：views/Paper/index.vue
 > 路由：/paper/index
 
+### 仓库包含框架/组件
+```js
+1. "dhtmlx-gantt": "^8.0.6",//甘特图
+2. "cesium": "^1.115.0",//三维地图
+3. "grid-layout-plus": "^1.0.5",//拖拽网格布局
+4. "dhtmlx-gantt": "^8.0.6",//甘特图
+5. "leaflet": "^1.9.4",//二维地图
+6. "paper": "^0.12.17",//canvas绘图
+7. "three": "^0.161.0",//三维绘图
+8. "gsap": "^3.12.5",//动画库
+9. "@logicflow/core": "^2.0.6",//流程图
+10. contenteditable输入框
+```
+
 ### Paper.js的博客地址
 [Vue3中使用paper.js](https://blog.csdn.net/qq_44775782/article/details/137052080)
 [在线浏览](https://rmq767.github.io/Vue3-Demo/#/paper/index)
@@ -23,4 +37,5 @@
 [在线浏览](https://rmq767.github.io/Vue3-Demo/#/gsap/scroll)
 
 ### LogicFlow流程图
+[Vue3实现LogicFlow流程图](https://blog.csdn.net/qq_44775782/article/details/143598096)
 [在线浏览](https://rmq767.github.io/Vue3-Demo/#/logicflow/index)

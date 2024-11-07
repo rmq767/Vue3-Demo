@@ -629,6 +629,7 @@ export function registerKeyboard(
     {
       keys: ["ctrl + v", "cmd + v"],
       callback: () => {
+        // 开始、结束、启动节点不能复制
         const startOrEndNode = copyNodes?.find(
           (node) =>
             node.type === "start" ||
@@ -652,6 +653,7 @@ export function registerKeyboard(
             CHILDREN_TRANSLATION_DISTANCE
           );
           if (!addElements) return true;
+          // 选中复制的节点
           addElements.nodes.forEach(function (node) {
             nodeData.value = node.getData();
             return lf.value?.selectElementById(node.id, true);
@@ -672,6 +674,7 @@ export function registerKeyboard(
             return edge.id && lf.value?.deleteEdge(edge.id);
           });
           elements.nodes.forEach(function (node) {
+            // 开始、结束、启动节点不能删除
             if (
               node.type === "start" ||
               node.type === "end" ||
