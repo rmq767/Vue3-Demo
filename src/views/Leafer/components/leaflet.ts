@@ -81,6 +81,19 @@ export const useLeaflet = (id: string, data?: CesiumData[]) => {
           })
           .addTo(map.value!);
       });
+      if (data.length === 1) {
+        const p = data[0].pointData[0];
+        polyline = Leaflet.polyline(
+          [
+            [p.lat - 0.01, p.lon - 0.01],
+            [p.lat - 0.01, p.lon + 0.01],
+          ],
+          {
+            color: "red",
+          }
+        ).addTo(map.value!);
+        points.push(polyline.getLatLngs());
+      }
       // 将所有点坐标展示到视图中
       // 创建边界对象并扩展以包含所有点
       const bounds = Leaflet.latLngBounds(points);
@@ -88,21 +101,22 @@ export const useLeaflet = (id: string, data?: CesiumData[]) => {
       map.value?.fitBounds(bounds, {
         padding: [10, 10],
       });
-
-      // 画一条水平线
-      const nw = bounds.getNorthWest();
-      const sw = bounds.getSouthWest();
-      const ne = bounds.getNorthEast();
-      const se = bounds.getSouthEast();
-      polyline = Leaflet.polyline(
-        [
-          [(nw.lat + sw.lat) / 2, nw.lng],
-          [(ne.lat + se.lat) / 2, ne.lng],
-        ],
-        {
-          color: "red",
-        }
-      ).addTo(map.value!);
+      if (data.length > 1) {
+        // 画一条水平线
+        const nw = bounds.getNorthWest();
+        const sw = bounds.getSouthWest();
+        const ne = bounds.getNorthEast();
+        const se = bounds.getSouthEast();
+        polyline = Leaflet.polyline(
+          [
+            [(nw.lat + sw.lat) / 2, nw.lng],
+            [(ne.lat + se.lat) / 2, ne.lng],
+          ],
+          {
+            color: "red",
+          }
+        ).addTo(map.value!);
+      }
       getNearestPointOnLine();
     }
   };
@@ -124,6 +138,10 @@ export const useLeaflet = (id: string, data?: CesiumData[]) => {
   const drawLineFn = (e: Leaflet.LeafletMouseEvent) => {
     if (drawType === "start") {
       if (polyline) {
+        // 重新画线清楚之前的线和标记点
+        nearestMarker.value.forEach((item) => {
+          item.remove();
+        });
         polyline.remove();
       }
       // 如果还没有开始绘制，则设置起点并开始绘制
@@ -167,7 +185,6 @@ export const useLeaflet = (id: string, data?: CesiumData[]) => {
    */
   const getNearestPointOnLine = () => {
     if (polyline) {
-      nearestMarker.value.forEach((item) => item.remove());
       nearestArr.value = [];
       // 获取线段点
       const lineArr = polyline

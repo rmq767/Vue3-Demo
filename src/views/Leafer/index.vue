@@ -1,7 +1,6 @@
 <template>
   <div class="leafer-container">
     <div id="leafer" style="width: 100%; height: 100vh"></div>
-    <GIS :data="data" class="gis"></GIS>
     <Leaflet :data="data" class="leaflet" @get-points="getPoints"></Leaflet>
   </div>
 </template>
@@ -12,7 +11,6 @@ export default { name: "Leafer" };
 <script lang="ts" setup>
 import { Leafer } from "leafer-ui";
 import { Ref, shallowRef, ShallowRef } from "vue";
-import GIS from "./components/gis.vue";
 import Leaflet from "./components/leaflet.vue";
 import { CesiumData } from "@/types/gis";
 import { drawLeft, drawLink, drawRight, drawWell, setConfig } from ".";
@@ -189,7 +187,6 @@ const initCanvas = (
   // 设置配置，否则无法画图
   setConfig(leafer, data, lineLength);
   if (data.value.length === 1) {
-    debugger;
     // 单井
     const element = data.value[0];
     // 画井
@@ -246,7 +243,6 @@ const initCanvas = (
   width: 100%;
   height: 100%;
   position: relative;
-  .gis,
   .leaflet {
     position: absolute;
     bottom: 0;
