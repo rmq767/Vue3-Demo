@@ -663,3 +663,20 @@ const showTooltip = (x: number, y: number, data?: any) => {
     tipsEl.style.top = y + "px";
   }
 };
+// /**
+//  * @description 根据经纬度获取笛卡尔坐标
+//  * @param {number[]} degrees
+//  * @param {number} height 渲染高度 防止重叠
+//  * @return {*}
+//  */
+// export const getCartesian3FromDegrees = (
+//   degrees: number[],
+//   height?: number
+// ) => {
+//   const cartesian = Cesium.Cartesian3.fromDegrees(
+//     degrees[0],
+//     degrees[1],
+//     height
+//   );
+//   return cartesian;
+// };

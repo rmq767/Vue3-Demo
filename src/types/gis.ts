@@ -17,6 +17,8 @@ export enum CesiumFilterType {
 
 export interface CesiumConfig {
   lookAt?: [number, number, number];
+  max?: number;
+  min?: number;
 }
 
 export interface CesiumDrawGetData {
@@ -32,6 +34,13 @@ export interface CesiumData {
   businessId?: string;
   legendUrl?: string;
   pointData: CesiumDataItem[];
+  info: {
+    type: string;
+    start: number;
+    end: number;
+  }[];
+  distance?: number;
+  length?: number;
 }
 
 export type WellType = "直井" | "水平井" | "定向井";
