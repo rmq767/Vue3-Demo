@@ -11,9 +11,9 @@ export default { name: "Leafer" };
 <script lang="ts" setup>
 import { Leafer } from "leafer-ui";
 import { Ref, shallowRef, ShallowRef } from "vue";
-import Leaflet from "./components/leaflet.vue";
+import Leaflet from "../components/leaflet.vue";
 import { CesiumData } from "@/types/gis";
-import { drawLeft, drawLink, drawRight, drawWell, setConfig } from ".";
+import { drawLeft, drawLink, drawRight, drawWell, setConfig } from "./index";
 
 const data = [
   {

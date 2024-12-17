@@ -1,9 +1,9 @@
 import { CesiumData } from "@/types/gis";
-import { Leafer, Rect, Group, Polygon } from "leafer-ui";
+import { Leafer, Rect, Polygon, Line, Path } from "leafer-ui";
 import { Ref, ShallowRef } from "vue";
 
-const WELL_WIDTH = 20; //井的宽度
-// const WELL_GAP = 200; //开始和结束的地层宽度
+const WELL_WIDTH = 10; //井的宽度
+const WELL_GAP = 200;
 let CANVAS_WIDTH = 0; //画布宽度 用来计算每个地层的宽度
 let CANVAS_HEIGHT = 0; //画布高度 用来计算每个地层的高度
 let wStep = 0; //每个单位的宽度
@@ -39,7 +39,10 @@ export const setConfig = (
   const wLength = Number(lineLength.value.toFixed(4));
   // 除去开始结束地层和每个井之后 每个单位的宽度
   wStep = Number(
-    ((CANVAS_WIDTH - WELL_WIDTH * data.value.length) / wLength).toFixed(2)
+    (
+      (CANVAS_WIDTH - WELL_WIDTH * data.value.length - WELL_GAP * 2) /
+      wLength
+    ).toFixed(2)
   );
   // 高度
   const hLength = getHLength(data.value);
@@ -54,15 +57,22 @@ export const setConfig = (
  * @return {*}
  */
 export const drawWell = (ele: CesiumData, index: number) => {
-  const { distance, length } = ele;
-  const rect = new Rect({
-    x: distance! * wStep + WELL_WIDTH * index, //开始地层+每个井的宽度+每个井的间隔
-    y: 0,
-    width: WELL_WIDTH,
-    height: length! * hStep,
-    fill: "#90caf9",
+  const { info, length } = ele;
+  const points = [];
+  for (let i = 0; i < info.length; i++) {
+    const element = info[i];
+    const end = [element.distance! * wStep + WELL_GAP, element.end! * hStep];
+    points.push(...end);
+  }
+  const line = new Line({
+    points,
+    strokeWidth: WELL_WIDTH,
+    stroke: "rgb(50,205,121)",
+    cornerRadius: WELL_WIDTH,
+    strokeCap: "round",
+    strokeJoin: "round",
   });
-  return rect;
+  return line;
 };
 
 /**
@@ -71,21 +81,22 @@ export const drawWell = (ele: CesiumData, index: number) => {
  * @return {*}
  */
 export const drawLeft = (ele: CesiumData) => {
-  const { info, distance } = ele;
+  const { info } = ele;
   const polygonArr = [];
-  for (let i = 0; i < info.length; i++) {
+  for (let i = 1; i < info.length; i++) {
     const element = info[i];
+    const pre = info[i - 1];
     const polygon = new Polygon({
       fill: `#${i}b${i}04${i}`,
       points: [
         0,
-        element.start * hStep - gap,
-        distance! * wStep,
-        element.start * hStep - gap,
-        distance! * wStep,
-        element.end * hStep + gap,
+        pre.end * hStep - gap,
+        pre.distance! * wStep + WELL_GAP,
+        pre.end * hStep - gap,
+        element.distance! * wStep + WELL_GAP,
+        element.end! * hStep + gap,
         0,
-        element.end * hStep + gap,
+        element.end! * hStep + gap,
       ],
     });
     polygonArr.push(polygon);
@@ -96,25 +107,25 @@ export const drawLeft = (ele: CesiumData) => {
 /**
  * @description 绘制右边地层
  * @param {CesiumData} ele
- * @param {number} index
  * @return {*}
  */
-export const drawRight = (ele: CesiumData, index: number) => {
-  const { distance, info, length } = ele;
+export const drawRight = (ele: CesiumData) => {
+  const { info } = ele;
   const polygonArr = [];
-  for (let i = 0; i < info.length; i++) {
+  for (let i = 1; i < info.length; i++) {
     const element = info[i];
+    const pre = info[i - 1];
     const polygon = new Polygon({
       fill: `#${i}b${i}04${i}`,
       points: [
-        distance! * wStep + WELL_WIDTH * (index + 1),
-        element.start * hStep - gap,
+        pre.distance! * wStep + WELL_GAP,
+        pre.end * hStep - gap,
         CANVAS_WIDTH,
-        element.start * hStep - gap,
+        pre.end * hStep - gap,
         CANVAS_WIDTH,
-        element.end * hStep + gap,
-        distance! * wStep + WELL_WIDTH * (index + 1),
-        element.end * hStep + gap,
+        element.end! * hStep + gap,
+        element.distance! * wStep + WELL_GAP,
+        element.end! * hStep + gap,
       ],
     });
     polygonArr.push(polygon);

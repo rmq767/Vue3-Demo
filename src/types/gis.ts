@@ -38,9 +38,16 @@ export interface CesiumData {
     type: string;
     start: number;
     end: number;
+    coordinate: [number, number];
+    distance?: number;
+    tvd?: number;
+    md?: number;
+    width?: number;
+    height?: number;
   }[];
   distance?: number;
   length?: number;
+  point?: number[];
 }
 
 export type WellType = "直井" | "水平井" | "定向井";

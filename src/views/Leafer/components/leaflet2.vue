@@ -12,7 +12,7 @@ export default { name: "" };
 </script>
 <script lang="ts" setup>
 import { CesiumData } from "@/types/gis";
-import { useLeaflet } from "./leaflet";
+import { useLeaflet } from "./leaflet2";
 import { computed, onMounted, reactive } from "vue";
 import { Edit } from "@element-plus/icons-vue";
 
@@ -35,6 +35,7 @@ const {
   getNearestPointOnLine,
   removeLinsener,
   lineLength,
+  drawLongLine,
 } = useLeaflet("map", props.data);
 const emits = defineEmits(["getPoints"]);
 
@@ -48,6 +49,7 @@ const draw = () => {
   } else {
     removeLinsener();
     getNearestPointOnLine();
+    drawLongLine();
     emits("getPoints", nearestPoints, lineLength);
   }
 };
