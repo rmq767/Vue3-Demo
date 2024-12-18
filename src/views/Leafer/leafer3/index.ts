@@ -4,31 +4,29 @@ import { ShallowRef } from "vue";
 import WellImage from "@/assets/well.png";
 
 const WELL_WIDTH = 10; //井的宽度
-const WELL_GAP = 200;
-const LEFT_GAP = 100;
+const SHOW_COUNT = 3; //显示的井的数量
+const LEFT_GAP = 200;
 const TOP_GAP = 200;
-const RIGHT_GAP = 100;
+const RIGHT_GAP = 200;
 const BOTTOM_GAP = 100;
 const IMAGE_WIDTH = 100;
+const WELL_GAP = 50;
 let CANVAS_WIDTH = 0; //画布宽度 用来计算每个地层的宽度
 let CANVAS_HEIGHT = 0; //画布高度 用来计算每个地层的高度
-let wStep = 0; //每个单位的宽度
 let hStep = 0; //每个单位的高度
-let gap = 0.2; //间隔 用于隐藏高度之间的空白
+let countWidth = 0;
 
 /**
  * @description 获取所有数据中最长的井长度
  * @param {CesiumData[]} data
  * @return {*}
  */
-const getMaxXY = (data: CesiumData[]) => {
-  let xMax = 0;
+const getMaxY = (data: CesiumData[]) => {
   let yMax = 0;
   data.forEach((item) => {
-    xMax = Math.max(xMax, item.length!);
     yMax = Math.max(yMax, item.distance!);
   });
-  return { x: xMax, y: yMax };
+  return { y: yMax };
 };
 
 /**
@@ -42,18 +40,8 @@ export const setConfig = (
 ) => {
   CANVAS_WIDTH = leafer.value?.width!;
   CANVAS_HEIGHT = leafer.value?.height!;
-  const { x, y } = getMaxXY(data);
-  // 除去开始结束地层和每个井之后 每个单位的宽度
-  wStep = Number(
-    (
-      (CANVAS_WIDTH -
-        WELL_WIDTH * data.length -
-        WELL_GAP * (data.length - 1) -
-        RIGHT_GAP -
-        LEFT_GAP) /
-      x
-    ).toFixed(2)
-  );
+  const { y } = getMaxY(data);
+  countWidth = (CANVAS_WIDTH - RIGHT_GAP - LEFT_GAP) / SHOW_COUNT;
   // 每个单位的高度
   hStep = Number(((CANVAS_HEIGHT - TOP_GAP - BOTTOM_GAP) / y).toFixed(2));
 };
@@ -64,13 +52,14 @@ export const setConfig = (
  * @param {number} index
  * @return {*}
  */
-export const drawWell = (ele: CesiumData, index: number) => {
+export const drawWell = (ele: CesiumData, index: number, length: number) => {
   const { info } = ele;
+  const wStep = (countWidth - WELL_GAP) / ele.length!;
   const points = [];
   for (let i = 0; i < info.length; i++) {
     const element = info[i];
     const end = [
-      element.width! * wStep + LEFT_GAP + index * WELL_GAP,
+      element.width! * wStep + LEFT_GAP + index * countWidth,
       element.height! * hStep + TOP_GAP,
     ];
     points.push(...end);
@@ -85,7 +74,7 @@ export const drawWell = (ele: CesiumData, index: number) => {
     strokeJoin: "round",
   });
   const imageGroup = new Group({
-    x: LEFT_GAP + index * WELL_GAP - IMAGE_WIDTH / 2,
+    x: LEFT_GAP + index * countWidth - IMAGE_WIDTH / 2,
     y: TOP_GAP - IMAGE_WIDTH,
   });
   // 画井图

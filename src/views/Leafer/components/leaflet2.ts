@@ -426,6 +426,9 @@ function projectPointToLine(
   return [xx, yy];
 }
 
+/**
+ * @description 根据视角方向对点进行排序
+ */
 function sortPointsByViewDirection(line: any, externalPoint: any) {
   // 辅助函数：计算两个点之间的向量
   function vector(p1: any, p2: any) {

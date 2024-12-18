@@ -161,11 +161,17 @@ export const useLeaflet = (id: string, data?: CesiumData[]) => {
       drawType = "start";
     }
   };
+  /**
+   * @description 移动线条
+   */
   const moveLineFn = (e: Leaflet.LeafletMouseEvent) => {
     if (drawType === "drawing" && startPoint) {
       polyline?.setLatLngs([startPoint, e.latlng]); // 更新线条的坐标
     }
   };
+  /**
+   * @description 取消事件监听
+   */
   const removeLinsener = () => {
     map.value?.off("click", drawLineFn);
     map.value?.off("mousemove", moveLineFn);

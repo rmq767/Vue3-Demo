@@ -92,8 +92,8 @@ onMounted(() => {
 <style lang="scss" scoped>
 .leaflet-container {
   overflow: visible;
-  width: 400px;
-  height: 400px;
+  width: 300px;
+  height: 300px;
   position: relative;
   background-color: transparent;
   transition: all 0.3s;
@@ -119,6 +119,10 @@ onMounted(() => {
     position: absolute;
     bottom: 0;
     right: -22px;
+    background-color: #fcf9f2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   [class*="-icon"] {
     z-index: 400;
@@ -128,7 +132,7 @@ onMounted(() => {
   }
 }
 .collpased {
-  transform: translateX(-400px);
+  transform: translateX(-100%);
 }
 :deep(.leaflet-tooltip.tooltip) {
   background-color: var(--el-color-primary);

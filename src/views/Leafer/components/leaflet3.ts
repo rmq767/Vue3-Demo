@@ -125,7 +125,7 @@ export const useLeaflet = (id: string) => {
       direction: "top", // 自动调整Tooltip的显示方向
       className: "",
       offset: [0, -5],
-      opacity: 0.7,
+      opacity: 0.8,
     } as Leaflet.TooltipOptions;
     if (bind) {
       option.className = "tooltip";
