@@ -18,6 +18,8 @@
 8. "gsap": "^3.12.5",//动画库
 9. "@logicflow/core": "^2.0.6",//流程图
 10. contenteditable输入框
+11. "leaflet": "^1.9.4"//二维地图
+12. "leafer-ui": "^1.0.10"//canvas绘图,更简单、更好用
 ```
 
 ### Paper.js的博客地址
@@ -47,3 +49,10 @@
 
 [Vue3实现LogicFlow流程图](https://blog.csdn.net/qq_44775782/article/details/143598096)
 [在线浏览](https://rmq767.github.io/Vue3-Demo/#/logicflow/index)
+
+### Leaflet地图+Leafer画图，实现地层和井轨迹的展示
+
+[Leaflet+Leafer实现地层、井轨迹的切面图展示]()
+[在线浏览：直井+地层连接](https://rmq767.github.io/Vue3-Demo/#/leafer/leafer1/index)
+[在线浏览：画单井轨迹](https://rmq767.github.io/Vue3-Demo/#/leafer/leafer2/index)
+[在线浏览：选择井进行井轨迹展示](https://rmq767.github.io/Vue3-Demo/#/leafer/leafer3/index)
