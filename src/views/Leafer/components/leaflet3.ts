@@ -99,7 +99,11 @@ export const useLeaflet = (id: string) => {
     const data = target.options.data;
     const checkedStatus = !data.checked;
     if (checkedStatus && checkedWell.value.length + 1 > 3) {
-      ElMessage.warning("最多只能选择3个井");
+      ElMessage.warning("最多只能选择3口井");
+      return;
+    }
+    if (!checkedStatus && checkedWell.value.length - 1 === 0) {
+      ElMessage.warning("最少选择1口井");
       return;
     }
     target.setStyle({
