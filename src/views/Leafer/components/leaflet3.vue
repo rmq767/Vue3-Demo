@@ -43,7 +43,7 @@ const props = defineProps({
 });
 const state = reactive({
   isCollpased: false,
-  type: "3d",
+  type: "2d",
 });
 const checked = ref<string[]>(["1676779130877161474"]);
 const { drawPoint, initMap, destroyMap } = useLeaflet("map", checked);
