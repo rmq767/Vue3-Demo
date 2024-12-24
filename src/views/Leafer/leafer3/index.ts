@@ -3,7 +3,7 @@ import { Leafer, Image, Line, Group, Rect, Text } from "leafer-ui";
 import { ShallowRef } from "vue";
 import WellImage from "@/assets/well.png";
 
-const WELL_WIDTH = 10; //井的宽度
+const WELL_WIDTH = 30; //井的宽度
 const SHOW_COUNT = 3; //显示的井的数量
 const LEFT_GAP = 200;
 const TOP_GAP = 200;
@@ -11,6 +11,7 @@ const RIGHT_GAP = 200;
 const BOTTOM_GAP = 100;
 const IMAGE_WIDTH = 100;
 const WELL_GAP = 50;
+const PIPE_WIDTH = 15;
 let CANVAS_WIDTH = 0; //画布宽度 用来计算每个地层的宽度
 let CANVAS_HEIGHT = 0; //画布高度 用来计算每个地层的高度
 let hStep = 0; //每个单位的高度
@@ -53,26 +54,9 @@ export const setConfig = (
  * @return {*}
  */
 export const drawWell = (ele: CesiumData, index: number, length: number) => {
-  const { info } = ele;
-  const wStep = (countWidth - WELL_GAP) / ele.length!;
-  const points = [];
-  for (let i = 0; i < info.length; i++) {
-    const element = info[i];
-    const end = [
-      element.width! * wStep + LEFT_GAP + index * countWidth,
-      element.height! * hStep + TOP_GAP,
-    ];
-    points.push(...end);
-  }
-  // 画井
-  const well = new Line({
-    points,
-    strokeWidth: WELL_WIDTH,
-    stroke: "rgb(50,205,121)",
-    cornerRadius: WELL_WIDTH,
-    strokeCap: "none",
-    strokeJoin: "round",
-  });
+  const sizeArr = handleInfoData(ele, index);
+  // 画井轨迹
+  const wellGroup = drawWellAsSize(sizeArr, ele.maxSize!, ele.minSize!);
   const imageGroup = new Group({
     x: LEFT_GAP + index * countWidth - IMAGE_WIDTH / 2,
     y: TOP_GAP - IMAGE_WIDTH,
@@ -95,7 +79,7 @@ export const drawWell = (ele: CesiumData, index: number, length: number) => {
     fill: "green",
   });
   imageGroup.add([image, name]);
-  return { well, imageGroup };
+  return { well: wellGroup, imageGroup };
 };
 
 export const drawBackground = () => {
@@ -132,4 +116,84 @@ export const drawTopBackground = () => {
     },
   });
   return rect;
+};
+
+const drawWellAsSize = (data: any, maxSize: number, minSize: number) => {
+  const group = new Group({
+    x: 0,
+    y: 0,
+  });
+  const wellWidthStep = WELL_WIDTH / minSize;
+  const keys = Object.keys(data).sort((a, b) => Number(a) - Number(b));
+  let lastWidth = wellWidthStep * Number(keys[0]);
+  keys.forEach((key, index) => {
+    // 先画灰的
+    const well = new Line({
+      points: data[key],
+      strokeWidth: lastWidth,
+      stroke: "#666",
+      cornerRadius: lastWidth,
+      strokeCap: "none",
+      strokeJoin: "round",
+    });
+    group.add(well);
+    lastWidth = lastWidth + PIPE_WIDTH;
+  });
+  lastWidth = wellWidthStep * Number(keys[0]);
+  keys.forEach((key, index) => {
+    // 在画白的 解决灰线问题
+    const well = new Line({
+      points: data[key],
+      strokeWidth: lastWidth - PIPE_WIDTH,
+      stroke: "#fff",
+      cornerRadius: lastWidth - PIPE_WIDTH,
+      strokeCap: "none",
+      strokeJoin: "round",
+    });
+    group.add(well);
+    lastWidth = lastWidth + PIPE_WIDTH;
+  });
+  return group;
+};
+
+/**
+ * @description 收集处理每一段相同size的井数据
+ * @param {CesiumData} ele
+ * @param {number} index
+ */
+const handleInfoData = (ele: CesiumData, index: number) => {
+  const { info } = ele;
+  const wStep = (countWidth - WELL_GAP) / ele.length!;
+  const sizeArr = {} as any;
+  let size = info[0].size!;
+  for (let i = 0; i < info.length; i++) {
+    const element = info[i];
+    if (size > element.size!) {
+      sizeArr[element.size!] = [];
+      sizeArr[element.size!].push(
+        element.width! * wStep + LEFT_GAP + index * countWidth,
+        element.height! * hStep + TOP_GAP
+      );
+    } else {
+      const old = sizeArr[size];
+      if (old) {
+        sizeArr[size] = [
+          ...old,
+          element.width! * wStep + LEFT_GAP + index * countWidth,
+          element.height! * hStep + TOP_GAP,
+        ];
+      } else {
+        sizeArr[size] = [
+          element.width! * wStep + LEFT_GAP + index * countWidth,
+          element.height! * hStep + TOP_GAP,
+        ];
+      }
+    }
+  }
+  let arr = [] as number[];
+  for (const key in sizeArr) {
+    sizeArr[key] = [...arr, ...sizeArr[key]];
+    arr = sizeArr[key];
+  }
+  return sizeArr;
 };

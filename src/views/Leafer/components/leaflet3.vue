@@ -1,11 +1,17 @@
 <template>
   <div class="leaflet-container" :class="{ collpased: state.isCollpased }">
     <div class="map">
-      <div id="map" class="h-full w-full"></div>
+      <div v-if="state.type === '2d'" id="map" class="h-full w-full"></div>
+      <div v-if="state.type === '3d'" id="cesium" class="h-full w-full"></div>
     </div>
     <div class="action">
-      <span>北</span>
-      <img src="@/assets/image.png" alt="" />
+      <div class="direction">
+        <span>北</span>
+        <img src="@/assets/image.png" alt="" />
+      </div>
+      <div class="type" @click="changeType">
+        {{ state.type === "2d" ? "3D" : "2D" }}
+      </div>
     </div>
     <div class="trigger">
       <el-icon
@@ -25,8 +31,9 @@ export default { name: "" };
 <script lang="ts" setup>
 import { CesiumData } from "@/types/gis";
 import { useLeaflet } from "./leaflet3";
-import { computed, onMounted, reactive, watch } from "vue";
+import { computed, nextTick, onMounted, reactive, ref, watch } from "vue";
 import { DArrowLeft, DArrowRight } from "@element-plus/icons-vue";
+import { initCesium } from "./cesium";
 
 const props = defineProps({
   data: {
@@ -36,56 +43,102 @@ const props = defineProps({
 });
 const state = reactive({
   isCollpased: false,
+  type: "3d",
 });
-const { checked, drawPoint } = useLeaflet("map");
+const checked = ref<string[]>(["1676779130877161474"]);
+const { drawPoint, initMap, destroyMap } = useLeaflet("map", checked);
+const { init, setCameraPosition, drawCesiumPoint } = initCesium(
+  "cesium",
+  checked
+);
 const emit = defineEmits(["checked"]);
 
 watch(
   () => checked.value,
   (newVal) => {
-    const data = [] as any[];
-    newVal.forEach((item) => {
-      let y = 0;
-      let x = 0;
-      const well = props.data.find((i) => i.businessId === item);
-      if (well) {
-        const info = well.info.map((i, index) => {
-          if (index === 0) {
-            return {
-              ...i,
-              width: 0,
-              height: 0,
-            };
-          } else {
-            const tvd = i.tvd! - well.info[index - 1].tvd!;
-            const md = i.md! - well.info[index - 1].md!;
-            y += md;
-            const width = Number((md * md - tvd * tvd).toFixed(2));
-            x += width;
-            return {
-              ...i,
-              width: x,
-              height: y,
-            };
-          }
-        });
-        data.push({
-          ...well,
-          info,
-          length: Number(x.toFixed(2)),
-          distance: Number(y.toFixed(2)),
-        });
-      }
-    });
-    emit("checked", data);
+    setData(newVal);
   },
   {
     deep: true,
   }
 );
 
+const setData = (value: string[]) => {
+  const data = [] as any[];
+  value.forEach((item) => {
+    let y = 0;
+    let x = 0;
+    let maxSize = 0;
+    let minSize = 0;
+    const well = props.data.find((i) => i.businessId === item);
+    if (well) {
+      const info = well.info.map((i, index) => {
+        if (index === 0) {
+          maxSize = i.size!;
+          minSize = i.size!;
+          return {
+            ...i,
+            width: 0,
+            height: 0,
+          };
+        } else {
+          maxSize = Math.max(i.size!, well.info[index - 1].size!, maxSize);
+          minSize = Math.min(i.size!, well.info[index - 1].size!, minSize);
+          const tvd = i.tvd! - well.info[index - 1].tvd!;
+          const md = i.md! - well.info[index - 1].md!;
+          y += md;
+          const width = Number((md * md - tvd * tvd).toFixed(2));
+          x += width;
+          return {
+            ...i,
+            width: x,
+            height: y,
+          };
+        }
+      });
+      data.push({
+        ...well,
+        info,
+        length: Number(x.toFixed(2)),
+        distance: Number(y.toFixed(2)),
+        maxSize,
+        minSize,
+      });
+    }
+  });
+  emit("checked", data);
+};
+
+const changeType = () => {
+  if (state.type === "3d") {
+    state.type = "2d";
+    destroyMap();
+    nextTick(() => {
+      initMap();
+      drawPoint(props.data);
+    });
+  } else {
+    state.type = "3d";
+    nextTick(() => {
+      init();
+      setCameraPosition(props.data);
+      drawCesiumPoint(props.data);
+    });
+  }
+};
+
 onMounted(() => {
-  drawPoint(props.data, ["1676779130877161474"]);
+  if (state.type === "3d") {
+    nextTick(() => {
+      init();
+      setCameraPosition(props.data);
+      drawCesiumPoint(props.data);
+    });
+  } else {
+    initMap();
+    drawPoint(props.data);
+  }
+  setData(checked.value);
 });
 </script>
 
@@ -99,6 +152,8 @@ onMounted(() => {
   transition: all 0.3s;
   .map {
     overflow: hidden;
+    width: 100%;
+    height: 100%;
   }
   .action {
     position: absolute;
@@ -107,12 +162,22 @@ onMounted(() => {
     z-index: 400;
     background-color: #fff;
     padding: 6px 4px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    img {
-      width: 20px;
-      height: 20px;
+    .direction {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      img {
+        width: 20px;
+        height: 20px;
+      }
+    }
+    .type {
+      cursor: pointer;
+      background-color: #ccc;
+      margin-top: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
   }
   .trigger {

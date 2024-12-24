@@ -1,4 +1,4 @@
-import { onBeforeUnmount, onMounted, ref, shallowRef, watch } from "vue";
+import { onBeforeUnmount, onMounted, Ref, ref, shallowRef, watch } from "vue";
 import * as Leaflet from "leaflet";
 import "leaflet.chinatmsproviders";
 import { CesiumData } from "@/types/gis";
@@ -8,9 +8,9 @@ interface CustomCircleMarkerOptions extends Leaflet.CircleMarkerOptions {
   data: any;
 }
 
-export const useLeaflet = (id: string) => {
+export const useLeaflet = (id: string, checkedWell: Ref<string[]>) => {
   const map = shallowRef<Leaflet.Map | null>(null);
-  const checkedWell = ref<string[]>([]);
+  // const checkedWell = ref<string[]>([]);
   // 高德图层
   const gaodeNormal = (Leaflet.tileLayer as any).chinaProvider(
     "GaoDe.Normal.Map",
@@ -49,7 +49,7 @@ export const useLeaflet = (id: string) => {
   /**
    * @description 绘制点
    */
-  const drawPoint = (data?: CesiumData[], checkedId?: string[]) => {
+  const drawPoint = (data?: CesiumData[]) => {
     if (data?.length) {
       const points = [] as any[];
       data.forEach((item) => {
@@ -74,12 +74,21 @@ export const useLeaflet = (id: string) => {
             data: {
               name: item.name,
               id: item.businessId,
-              checked: checkedId?.includes(item.businessId!),
+              checked: checkedWell.value?.includes(item.businessId!),
             },
           } as CustomCircleMarkerOptions
-        ).addTo(map.value!);
+        )
+          .bindTooltip(item.name, {
+            permanent: true, // 使Tooltip始终可见
+            direction: "top", // 自动调整Tooltip的显示方向
+            className: checkedWell.value?.includes(item.businessId!)
+              ? "tooltip"
+              : "",
+            offset: [0, -5],
+            opacity: 0.8,
+          })
+          .addTo(map.value!);
         markers.push(marker);
-        bindTooltip(marker, item.name, checkedId?.includes(item.businessId!));
         marker.on("click", choosePoint);
       });
       // 创建边界对象并扩展以包含所有点
@@ -160,10 +169,6 @@ export const useLeaflet = (id: string) => {
     }
   };
 
-  onMounted(() => {
-    initMap();
-  });
-
   onBeforeUnmount(() => {
     destroyMap();
   });
@@ -172,5 +177,7 @@ export const useLeaflet = (id: string) => {
     map,
     checked: checkedWell,
     drawPoint,
+    initMap,
+    destroyMap,
   };
 };

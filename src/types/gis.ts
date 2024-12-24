@@ -44,10 +44,13 @@ export interface CesiumData {
     md?: number;
     width?: number;
     height?: number;
+    size?: number;
   }[];
   distance?: number;
   length?: number;
   point?: number[];
+  maxSize?: number;
+  minSize?: number;
 }
 
 export type WellType = "直井" | "水平井" | "定向井";
