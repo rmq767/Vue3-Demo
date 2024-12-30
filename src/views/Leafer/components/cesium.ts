@@ -145,20 +145,7 @@ export const initCesium = (id: string, checkedWell: Ref<string[]>) => {
     (viewer.value?.scene.screenSpaceCameraController as any).zoomEventTypes =
       []; // 禁用默认缩放事件
     // 自定义缩放逻辑 解决缩放过多问题
-    document.addEventListener("wheel", function (event) {
-      event.preventDefault();
-      const delta = Math.sign(event.deltaY); // 获取滚轮方向
-      const zoomAmount = 5; // 自定义缩放倍率
-      if (delta > 0) {
-        viewer.value?.camera.zoomOut(
-          viewer.value?.camera.positionCartographic.height / zoomAmount
-        );
-      } else {
-        viewer.value?.camera.zoomIn(
-          viewer.value?.camera.positionCartographic.height / zoomAmount
-        );
-      }
-    });
+    document.addEventListener("wheel", controlZoom, { passive: false });
   };
 
   /**
@@ -238,8 +225,8 @@ export const initCesium = (id: string, checkedWell: Ref<string[]>) => {
       },
       label: {
         text: item.name,
-        font: "10px",
-        scale: 0.7,
+        font: "12px",
+        scale: 0.8,
         pixelOffset: new Cesium.Cartesian2(0, -20),
         fillColor: fillColor,
         backgroundColor: background,
@@ -258,9 +245,25 @@ export const initCesium = (id: string, checkedWell: Ref<string[]>) => {
   };
 
   const destroyed = () => {
+    document.removeEventListener("wheel", controlZoom);
     viewer.value?.entities.removeAll();
     viewer.value?.destroy();
     viewer.value = undefined;
+  };
+
+  const controlZoom = (event: WheelEvent) => {
+    event.preventDefault();
+    const delta = Math.sign(event.deltaY); // 获取滚轮方向
+    const zoomAmount = 5; // 自定义缩放倍率
+    if (delta > 0) {
+      viewer.value?.camera.zoomOut(
+        viewer.value?.camera.positionCartographic.height / zoomAmount
+      );
+    } else {
+      viewer.value?.camera.zoomIn(
+        viewer.value?.camera.positionCartographic.height / zoomAmount
+      );
+    }
   };
 
   onBeforeUnmount(() => {
@@ -296,16 +299,4 @@ export const getCartesian3FromDegrees = (
     height
   );
   return cartesian;
-};
-
-const getColor = (c: any) => {
-  return new Cesium.CallbackProperty(function (time, result) {
-    // 根据某种逻辑计算颜色
-    const color = new Cesium.Color(c); // 替换...为实际的颜色值
-    result = color; // 注意：这里通常不需要显式地将result设置为color，因为Cesium会自动处理
-    // 但是，由于Cesium的API设计，你可能需要返回一个Cesium.Property的实例，对于颜色来说就是Cesium.Color
-    // 而在这种情况下，Cesium.Color已经是一个“值属性”，它自身就代表了颜色值
-    // 因此，直接返回color即可（实际上Cesium内部会处理这个转换）
-    return color; // 尽管这里看起来有些冗余，但按照Cesium的API设计，这是正确的做法
-  }, false);
 };

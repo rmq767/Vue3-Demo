@@ -199,11 +199,36 @@ onMounted(() => {
 .collpased {
   transform: translateX(-100%);
 }
-:deep(.leaflet-tooltip.tooltip) {
+// :deep(.leaflet-tooltip.tooltip) {
+//   background-color: var(--el-color-primary);
+//   color: #fff;
+//   border: none;
+//   &.leaflet-tooltip-top:before {
+//     border-top-color: var(--el-color-primary);
+//   }
+// }
+:deep(.leaflet-marker-icon) {
+  width: auto !important;
+  height: 0 !important;
+  white-space: nowrap;
+  &.leaflet-div-icon {
+    background: none;
+    border: none;
+    display: inline;
+  }
+}
+:deep(.tooltip-content) {
+  transform: translateX(-50%) translateX(6px) translateY(-100%) translateY(-2px);
+  padding: 5px 9px;
+  background-color: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  color: #000;
+  font-weight: bold;
+  opacity: 0.8;
+}
+:deep(.tooltip .tooltip-content) {
   background-color: var(--el-color-primary);
   color: #fff;
-  &.leaflet-tooltip-top:before {
-    border-top-color: var(--el-color-primary);
-  }
+  border: none;
 }
 </style>

@@ -20,7 +20,8 @@ export const useLeaflet = (id: string, checkedWell: Ref<string[]>) => {
     }
   );
   const gdNormal = Leaflet.layerGroup([gaodeNormal]);
-  const markers = [] as Leaflet.CircleMarker<any>[];
+  let markers = [] as Leaflet.CircleMarker<any>[];
+  let labelMarkers = [] as Leaflet.Marker<any>[];
 
   /**
    * @description 初始化地图
@@ -58,6 +59,25 @@ export const useLeaflet = (id: string, checkedWell: Ref<string[]>) => {
           lng: item.pointData[0].lon,
           lat: item.pointData[0].lat,
         });
+        const customLabel = Leaflet.divIcon({
+          html: `<div class='tooltip-content'>${item.name}</div>`,
+          className: checkedWell.value?.includes(item.businessId!)
+            ? "tooltip"
+            : "",
+        });
+        const labelMarker = Leaflet.marker(
+          [item.pointData[0].lat, item.pointData[0].lon],
+          {
+            icon: customLabel,
+            data: {
+              name: item.name,
+              id: item.businessId,
+              checked: checkedWell.value?.includes(item.businessId!),
+            },
+          } as any
+        ).addTo(map.value!);
+        labelMarkers.push(labelMarker);
+        labelMarker.on("click", choosePoint);
         // 添加点
         const marker = Leaflet.circleMarker(
           {
@@ -70,24 +90,16 @@ export const useLeaflet = (id: string, checkedWell: Ref<string[]>) => {
             fillColor: "red",
             fill: true,
             fillOpacity: 1,
-            radius: 10,
+            radius: 8,
             data: {
               name: item.name,
               id: item.businessId,
               checked: checkedWell.value?.includes(item.businessId!),
             },
+            icon: customLabel,
           } as CustomCircleMarkerOptions
-        )
-          .bindTooltip(item.name, {
-            permanent: true, // 使Tooltip始终可见
-            direction: "top", // 自动调整Tooltip的显示方向
-            className: checkedWell.value?.includes(item.businessId!)
-              ? "tooltip"
-              : "",
-            offset: [0, -5],
-            opacity: 0.8,
-          })
-          .addTo(map.value!);
+        ).addTo(map.value!);
+        debugger;
         markers.push(marker);
         marker.on("click", choosePoint);
       });
@@ -104,8 +116,15 @@ export const useLeaflet = (id: string, checkedWell: Ref<string[]>) => {
    * @description 选中井
    */
   const choosePoint = (item: any) => {
-    const target = item.target;
-    const data = target.options.data;
+    const data = item.target.options.data;
+    const { id } = data;
+    // 根据id查找对应的labelMarker和pointMarker
+    const targetLabel = labelMarkers.find(
+      (item) => (item.options as any).data.id === id
+    )!;
+    const targetPoint = markers.find(
+      (item) => (item.options as any).data.id === id
+    )!;
     const checkedStatus = !data.checked;
     if (checkedStatus && checkedWell.value.length + 1 > 3) {
       ElMessage.warning("最多只能选择3口井");
@@ -115,46 +134,34 @@ export const useLeaflet = (id: string, checkedWell: Ref<string[]>) => {
       ElMessage.warning("最少选择1口井");
       return;
     }
-    target.setStyle({
-      data: {
-        ...data,
-        checked: checkedStatus,
-      },
-    });
+    // 更新labelMarker和pointMarker的checked属性
+    (targetLabel.options as any).data.checked = checkedStatus;
+    (targetPoint.options as any).data.checked = checkedStatus;
     if (checkedStatus) {
-      bindTooltip(target, data.name, true);
+      bindTooltip(targetLabel, data, true);
     } else {
-      bindTooltip(target, data.name, false);
+      bindTooltip(targetLabel, data, false);
     }
   };
 
   const bindTooltip = (
-    item: Leaflet.CircleMarker<any>,
-    name: string,
+    target: Leaflet.Marker<any>,
+    data: any,
     bind = false
   ) => {
-    const option = {
-      permanent: true, // 使Tooltip始终可见
-      direction: "top", // 自动调整Tooltip的显示方向
-      className: "",
-      offset: [0, -5],
-      opacity: 0.8,
-    } as Leaflet.TooltipOptions;
+    const { id } = data;
+    const icon = target.options.icon!;
     if (bind) {
-      option.className = "tooltip";
-      item.bindTooltip(name, option);
-      checkedWell.value.push(
-        (item.options as CustomCircleMarkerOptions).data.id
-      );
+      icon.options.className = "tooltip";
+      checkedWell.value.push(id);
     } else {
-      item.bindTooltip(name, option);
-      const index = checkedWell.value.indexOf(
-        (item.options as CustomCircleMarkerOptions).data.id
-      );
+      icon.options.className = "";
+      const index = checkedWell.value.indexOf(id);
       if (index > -1) {
         checkedWell.value.splice(index, 1);
       }
     }
+    target.setIcon(icon!);
   };
 
   /**
@@ -165,6 +172,11 @@ export const useLeaflet = (id: string, checkedWell: Ref<string[]>) => {
       markers.forEach((item) => {
         item.off("click", choosePoint);
       });
+      labelMarkers.forEach((item) => {
+        item.off("click", choosePoint);
+      });
+      markers = [];
+      labelMarkers = [];
       map.value.remove();
     }
   };
