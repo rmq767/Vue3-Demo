@@ -32,7 +32,7 @@ const initRoute = () => {
   const componentArr = import.meta.glob("../views/**/*.vue");
   const keys = Object.keys(componentArr);
   const page = keys.filter((item) => {
-    return !item.includes("components");
+    return !item.includes("/components") && !item.includes("/home");
   });
   const routeArr = page.map((item) => {
     const path = item.replace("../views/", "/").replace(".vue", "");
