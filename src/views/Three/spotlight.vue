@@ -31,6 +31,7 @@ const threeConfig: ThreeConfig = {
 };
 
 const threeDemo = ref();
+let gui: GUI;
 
 const initThree = () => {
   const el = threeDemo.value;
@@ -105,7 +106,7 @@ const initCircle = () => {
   spotLight.target = sphere;
   threeConfig.scene?.add(spotLight);
 
-  const gui = new GUI();
+  gui = new GUI();
   gui.add(sphere.position, "x").min(-10).max(10).step(0.01).name("x");
   gui
     .add(spotLight, "angle")
@@ -142,6 +143,9 @@ const update = () => {
 };
 onMounted(() => {
   initThree();
+});
+onBeforeUnmount(() => {
+  gui.destroy();
 });
 </script>
 

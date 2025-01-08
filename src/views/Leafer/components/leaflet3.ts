@@ -45,6 +45,9 @@ export const useLeaflet = (id: string, checkedWell: Ref<string[]>) => {
       zoomControl: false,
       doubleClickZoom: false,
     });
+    // 设置label层低于point层 与cesium一致
+    map.value.createPane("labelPane").style.zIndex = "400";
+    map.value.createPane("circlePane").style.zIndex = "401";
   };
 
   /**
@@ -52,64 +55,76 @@ export const useLeaflet = (id: string, checkedWell: Ref<string[]>) => {
    */
   const drawPoint = (data?: CesiumData[]) => {
     if (data?.length) {
-      const points = [] as any[];
-      data.forEach((item) => {
-        // 获取所有点坐标
-        points.push({
-          lng: item.pointData[0].lon,
-          lat: item.pointData[0].lat,
-        });
-        const customLabel = Leaflet.divIcon({
-          html: `<div class='tooltip-content'>${item.name}</div>`,
-          className: checkedWell.value?.includes(item.businessId!)
-            ? "tooltip"
-            : "",
-        });
-        const labelMarker = Leaflet.marker(
-          [item.pointData[0].lat, item.pointData[0].lon],
-          {
-            icon: customLabel,
-            data: {
-              name: item.name,
-              id: item.businessId,
-              checked: checkedWell.value?.includes(item.businessId!),
-            },
-          } as any
-        ).addTo(map.value!);
-        labelMarkers.push(labelMarker);
-        labelMarker.on("click", choosePoint);
-        // 添加点
-        const marker = Leaflet.circleMarker(
-          {
-            lat: item.pointData[0].lat,
-            lng: item.pointData[0].lon,
-          },
-          {
-            stroke: true,
-            color: "#fff",
-            fillColor: "red",
-            fill: true,
-            fillOpacity: 1,
-            radius: 8,
-            data: {
-              name: item.name,
-              id: item.businessId,
-              checked: checkedWell.value?.includes(item.businessId!),
-            },
-            icon: customLabel,
-          } as CustomCircleMarkerOptions
-        ).addTo(map.value!);
-        debugger;
-        markers.push(marker);
-        marker.on("click", choosePoint);
-      });
+      drawLabel(data);
+      const points = drawCircle(data);
       // 创建边界对象并扩展以包含所有点
       const bounds = Leaflet.latLngBounds(points);
       // 调整地图视图以包含所有点
       map.value?.fitBounds(bounds, {
-        padding: [10, 10],
+        padding: [5, 5],
       });
     }
+  };
+
+  const drawCircle = (data: CesiumData[]) => {
+    const points = [] as any[];
+    data.forEach((item) => {
+      // 获取所有点坐标
+      points.push({
+        lng: item.pointData[0].lon,
+        lat: item.pointData[0].lat,
+      });
+      // 添加点
+      const marker = Leaflet.circleMarker(
+        {
+          lat: item.pointData[0].lat,
+          lng: item.pointData[0].lon,
+        },
+        {
+          stroke: true,
+          color: "#fff",
+          fillColor: "red",
+          fill: true,
+          fillOpacity: 1,
+          radius: 8,
+          data: {
+            name: item.name,
+            id: item.businessId,
+            checked: checkedWell.value?.includes(item.businessId!),
+          },
+          pane: "circlePane",
+        } as CustomCircleMarkerOptions
+      ).addTo(map.value!);
+      markers.push(marker);
+      marker.on("click", choosePoint);
+    });
+    return points;
+  };
+
+  const drawLabel = (data: CesiumData[]) => {
+    data.forEach((item) => {
+      // 添加label
+      const customLabel = Leaflet.divIcon({
+        html: `<div class='tooltip-content'>${item.name}</div>`,
+        className: checkedWell.value?.includes(item.businessId!)
+          ? "tooltip"
+          : "",
+      });
+      const labelMarker = Leaflet.marker(
+        [item.pointData[0].lat, item.pointData[0].lon],
+        {
+          icon: customLabel,
+          data: {
+            name: item.name,
+            id: item.businessId,
+            checked: checkedWell.value?.includes(item.businessId!),
+          },
+          pane: "labelPane",
+        } as any
+      ).addTo(map.value!);
+      labelMarkers.push(labelMarker);
+      labelMarker.on("click", choosePoint);
+    });
   };
 
   /**

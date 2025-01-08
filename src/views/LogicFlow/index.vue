@@ -10,7 +10,7 @@
         class="logic-flow-setting"
         :data="nodeData!"
         :lf="lf"
-        :type="state.settingType"
+        :type="settingType"
       ></Setting>
       <NodePanel :lf="lf"></NodePanel>
     </div>
@@ -36,33 +36,34 @@ import { SettingType } from "@/types/logic-flow";
 
 const logicFlowRef = ref<HTMLDivElement>();
 const nodeData = ref<LogicFlow.NodeData | LogicFlow.EdgeData>(); // 节点数据
-const state = reactive({
-  settingType: "all" as SettingType,
-});
+// const state = reactive({
+//   settingType: "all" as SettingType,
+// });
+const settingType = ref<SettingType>("all");
 const lf = shallowRef<LogicFlow>();
 
 const getSettingInfo = (data: LogicFlow.NodeData | LogicFlow.EdgeData) => {
   switch (data.type) {
     case "launch":
       nodeData.value = data;
-      state.settingType = data.type;
+      settingType.value = data.type;
       break;
     case "approver":
       nodeData.value = data;
-      state.settingType = data.type;
+      settingType.value = data.type;
       break;
     case "link":
       nodeData.value = data;
-      state.settingType = data.type;
+      settingType.value = data.type;
       break;
     case "review":
       nodeData.value = data;
-      state.settingType = data.type;
+      settingType.value = data.type;
       break;
     case "polyline":
     case "dashedLine":
       nodeData.value = data;
-      state.settingType = data.type;
+      settingType.value = data.type;
       break;
   }
 };
@@ -71,7 +72,7 @@ const getSettingInfo = (data: LogicFlow.NodeData | LogicFlow.EdgeData) => {
  */
 const initEvent = (lf: ShallowRef<LogicFlow | undefined>) => {
   lf.value?.on("blank:click", (e) => {
-    state.settingType = "all";
+    settingType.value = "all";
   });
   lf.value?.on("node:mousedown", ({ data }) => {
     lf.value?.selectElementById(data.id, false);
@@ -134,7 +135,7 @@ onMounted(() => {
     grid: true,
     keyboard: {
       enabled: true,
-      shortcuts: registerKeyboard(lf, nodeData),
+      shortcuts: registerKeyboard(lf, nodeData, settingType),
     },
     textEdit: false,
   });

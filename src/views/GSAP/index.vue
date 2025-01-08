@@ -39,7 +39,7 @@
 export default { name: "GSAP" };
 </script>
 <script lang="ts" setup>
-import { onMounted } from "vue";
+import { onBeforeUnmount, onMounted } from "vue";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 // import { PixiPlugin } from "gsap/PixiPlugin";
@@ -139,6 +139,9 @@ onMounted(() => {
   c3();
   c4();
   c5();
+});
+onBeforeUnmount(() => {
+  ScrollTrigger.killAll();
 });
 </script>
 

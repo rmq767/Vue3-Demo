@@ -13,7 +13,6 @@ import { onMounted, ref } from "vue";
 import { ThreeConfig } from ".";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import * as TWEEN from "three/examples/jsm/libs/tween.module.js";
-import { GUI } from "three/examples/jsm/libs/lil-gui.module.min.js";
 
 const threeConfig: ThreeConfig = {
   scene: null,

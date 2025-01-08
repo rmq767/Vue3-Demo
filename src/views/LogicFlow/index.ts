@@ -1,3 +1,4 @@
+import { SettingType } from "@/types/logic-flow";
 import LogicFlow, {
   BaseNodeModel,
   CircleNode,
@@ -614,7 +615,8 @@ export function registeNode(lf: ShallowRef<LogicFlow | undefined>) {
  */
 export function registerKeyboard(
   lf: ShallowRef<LogicFlow | undefined>,
-  nodeData: Ref<LogicFlow.NodeData | LogicFlow.EdgeData | undefined>
+  nodeData: Ref<LogicFlow.NodeData | LogicFlow.EdgeData | undefined>,
+  settingType: Ref<SettingType>
 ) {
   let copyNodes = undefined as LogicFlow.NodeData[] | undefined;
   let TRANSLATION_DISTANCE = 40;
@@ -671,7 +673,8 @@ export function registerKeyboard(
         if (elements) {
           lf.value?.clearSelectElements();
           elements.edges.forEach(function (edge) {
-            return edge.id && lf.value?.deleteEdge(edge.id);
+            edge.id && lf.value?.deleteEdge(edge.id);
+            return (settingType.value = "all");
           });
           elements.nodes.forEach(function (node) {
             // 开始、结束、启动节点不能删除
@@ -682,8 +685,10 @@ export function registerKeyboard(
             ) {
               return true;
             }
-            return node.id && lf.value?.deleteNode(node.id);
+            node.id && lf.value?.deleteNode(node.id);
+            return (settingType.value = "all");
           });
+
           return false;
         }
       },

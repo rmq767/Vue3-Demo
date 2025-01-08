@@ -191,10 +191,10 @@ export const initCesium = (id: string, checkedWell: Ref<string[]>) => {
 
     // 创建包含所有点的矩形（边界框）
     const boundingRectangle = new Cesium.Rectangle(
-      minLongitude - 0.05,
-      minLatitude - 0.05,
-      maxLongitude + 0.05,
-      maxLatitude + 0.05
+      minLongitude - 0.055,
+      minLatitude - 0.055,
+      maxLongitude + 0.055,
+      maxLatitude + 0.055
     );
     return boundingRectangle;
   };
@@ -227,12 +227,11 @@ export const initCesium = (id: string, checkedWell: Ref<string[]>) => {
         text: item.name,
         font: "12px",
         scale: 0.8,
-        pixelOffset: new Cesium.Cartesian2(0, -20),
+        pixelOffset: new Cesium.Cartesian2(0, -18),
         fillColor: fillColor,
         backgroundColor: background,
         showBackground: true,
         outlineWidth: 0,
-        backgroundPadding: new Cesium.Cartesian2(8, 10),
       },
     });
     marker.push(point);

@@ -31,6 +31,7 @@ const threeConfig: ThreeConfig = {
 };
 
 const threeDemo = ref();
+let gui: GUI;
 
 const initThree = () => {
   const el = threeDemo.value;
@@ -107,7 +108,7 @@ const initCircle = () => {
   directionalLight.shadow.camera.bottom = -5;
   threeConfig.scene?.add(directionalLight);
 
-  const gui = new GUI();
+  gui = new GUI();
   gui
     .add(directionalLight.shadow.camera, "near")
     .min(0)
@@ -143,6 +144,9 @@ const update = () => {
 };
 onMounted(() => {
   initThree();
+});
+onBeforeUnmount(() => {
+  gui.destroy();
 });
 </script>
 

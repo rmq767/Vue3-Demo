@@ -26,6 +26,7 @@ const threeConfig: ThreeConfig = {
 };
 
 const threeDemo = ref();
+let gui: GUI;
 
 const initThree = () => {
   const el = threeDemo.value;
@@ -114,7 +115,7 @@ const initBox = () => {
   // 添加到场景中
   // threeConfig.scene?.add(threeConfig.cube);
 
-  const gui = new GUI();
+  gui = new GUI();
   gui
     .add(threeConfig.material, "aoMapIntensity")
     .min(0)
@@ -186,6 +187,9 @@ const update = () => {
 };
 onMounted(() => {
   initThree();
+});
+onBeforeUnmount(() => {
+  gui.destroy();
 });
 </script>
 

@@ -35,6 +35,7 @@ const fullscreen = ref(false);
 const toFullScreen = computed(() => {
   return fullscreen.value ? "退出全屏" : "进入全屏";
 });
+let gui: GUI;
 
 const initThree = () => {
   const el = threeDemo.value;
@@ -158,7 +159,7 @@ const initGUI = () => {
       fullscreen.value = false;
     },
   };
-  const gui = new GUI();
+  gui = new GUI();
   // 自定义事件
   gui.add(eventObj, "fullScreen").name("全屏");
   gui.add(eventObj, "exitFullscreen").name("退出全屏");
@@ -257,6 +258,7 @@ onMounted(() => {
   window.addEventListener("resize", resetScene);
 });
 onBeforeUnmount(() => {
+  gui.destroy();
   window.removeEventListener("resize", resetScene);
 });
 </script>

@@ -1,7 +1,21 @@
 <template>
-  <div class="bg">
-    <div class="text">Hello World</div>
-    <input type="range" min="-1" max="0" step="0.1" v-model="value" />
+  <div>
+    <div class="route-item" v-for="[key, value] in routePaths" :key="value">
+      <el-descriptions direction="vertical" :title="key" :column="1" border>
+        <el-descriptions-item
+          v-for="item in value"
+          :key="item"
+          label="路由地址"
+          label-width="120px"
+          label-align="center"
+          align="center"
+        >
+          <el-button type="primary" link @click="toPage(item)">{{
+            item
+          }}</el-button>
+        </el-descriptions-item>
+      </el-descriptions>
+    </div>
   </div>
 </template>
 
@@ -9,39 +23,45 @@
 export default { name: "Home" };
 </script>
 <script lang="ts" setup>
-import { computed, ref } from "vue";
+import { onMounted, ref } from "vue";
+import { useRouter } from "vue-router";
 
-const value = ref(-0.5);
-const s = computed(() => {
-  return value.value.toString() + "s";
+const routePaths = ref(new Map());
+const router = useRouter();
+const initRoute = () => {
+  const componentArr = import.meta.glob("../views/**/*.vue");
+  const keys = Object.keys(componentArr);
+  const page = keys.filter((item) => {
+    return !item.includes("components");
+  });
+  const routeArr = page.map((item) => {
+    const path = item.replace("../views/", "/").replace(".vue", "");
+    const routerPath = path.replace("./", "");
+    const name = routerPath.split("/")[0];
+    return {
+      path: routerPath,
+      name: name,
+    };
+  });
+  routeArr.forEach((item) => {
+    const old = routePaths.value.get(item.name);
+    if (old) {
+      routePaths.value.set(item.name, [...old, item.path]);
+    } else {
+      routePaths.value.set(item.name, [item.path]);
+    }
+  });
+};
+const toPage = (path: string) => {
+  router.push(path);
+};
+onMounted(() => {
+  initRoute();
 });
 </script>
 
 <style lang="scss" scoped>
-.bg {
-  background-image: linear-gradient(70deg, #000, #000 50%, #fff 50%);
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-}
-.text {
-  --delay: v-bind(s);
-  font-size: 60px;
-  mix-blend-mode: difference;
-  color: white;
-  transform: translateX(-300px);
-  animation: move 1s ease-in-out var(--delay);
-  animation-play-state: paused;
-}
-@keyframes move {
-  0% {
-    transform: translateX(300px);
-  }
-  100% {
-    transform: translateX(-300px);
-  }
+.route-item {
+  margin-bottom: 20px;
 }
 </style>

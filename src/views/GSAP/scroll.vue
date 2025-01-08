@@ -36,7 +36,7 @@
 export default { name: "Scroll" };
 </script>
 <script lang="ts" setup>
-import { onMounted } from "vue";
+import { onBeforeUnmount, onMounted } from "vue";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { TextPlugin } from "gsap/TextPlugin";
@@ -136,6 +136,9 @@ const page1 = () => {
 onMounted(() => {
   scroll();
   page1();
+});
+onBeforeUnmount(() => {
+  ScrollTrigger.killAll();
 });
 </script>
 

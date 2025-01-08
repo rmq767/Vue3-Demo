@@ -12,7 +12,6 @@ import * as THREE from "three";
 import { onBeforeUnmount, onMounted, ref } from "vue";
 import { ThreeConfig } from ".";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { GUI } from "three/examples/jsm/libs/lil-gui.module.min.js";
 
 const threeConfig: ThreeConfig = {
   scene: null,
