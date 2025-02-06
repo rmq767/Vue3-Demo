@@ -28,12 +28,16 @@ import { useRouter } from "vue-router";
 
 const routePaths = ref(new Map());
 const router = useRouter();
+/**
+ * @description 初始化路由
+ */
 const initRoute = () => {
   const componentArr = import.meta.glob("../views/**/*.vue");
   const keys = Object.keys(componentArr);
   const page = keys.filter((item) => {
     return !item.includes("/components") && !item.includes("/home");
   });
+  // 获取想要的路由地址和name
   const routeArr = page.map((item) => {
     const path = item.replace("../views/", "/").replace(".vue", "");
     const routerPath = path.replace("./", "");
@@ -52,6 +56,9 @@ const initRoute = () => {
     }
   });
 };
+/**
+ * @description 跳转页面
+ */
 const toPage = (path: string) => {
   router.push(path);
 };
