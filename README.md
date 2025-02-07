@@ -20,6 +20,7 @@
 10. contenteditable输入框
 11. "leaflet": "^1.9.4"//二维地图
 12. "leafer-ui": "^1.0.10"//canvas绘图,更简单、更好用
+13. "codemirror": "^6.0.1",//代码编辑器
 ```
 
 ### Paper.js
@@ -37,6 +38,7 @@
 
 * [contenteditable实现插入标签的输入框功能](https://blog.csdn.net/qq_44775782/article/details/139302247)
 * [在线浏览](https://rmq767.github.io/Vue3-Demo/#/fneditor/index)
+* 手搓的，建议使用codemirror的公式编辑器
 
 ### 拖拽布局
 
@@ -57,3 +59,8 @@
 * [在线浏览：直井+地层连接](https://rmq767.github.io/Vue3-Demo/#/leafer/leafer1/index)
 * [在线浏览：画单井轨迹](https://rmq767.github.io/Vue3-Demo/#/leafer/leafer2/index)
 * [在线浏览：选择井进行井轨迹展示](https://rmq767.github.io/Vue3-Demo/#/leafer/leafer3/index)
+
+### codemirror6实现公式编辑器
+
+* [Vue3+codemirror6实现公式编辑器](https://blog.csdn.net/qq_44775782/article/details/145489119)
+* [在线浏览](https://rmq767.github.io/Vue3-Demo/#/RulesEditor/index)

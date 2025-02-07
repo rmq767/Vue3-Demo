@@ -165,7 +165,7 @@ const placeholderFn = ViewPlugin.fromClass(
 );
 
 // 背景样式
-export const baseTheme = EditorView.baseTheme({
+const baseTheme = EditorView.baseTheme({
   ".cm-tag": {
     paddingLeft: "6px",
     paddingRight: "6px",
@@ -214,13 +214,13 @@ export const useCodemirror = () => {
   const view = shallowRef<EditorView>();
   const editorRef = ref<InstanceType<typeof HTMLDivElement>>();
   const extensions = [
-    placeholderTag,
-    placeholderFn,
-    baseTheme,
-    EditorView.lineWrapping,
-    basicSetup,
-    javascript(),
-    autocompletion({ override: [myCompletions] }),
+    placeholderTag, //插入tag
+    placeholderFn, //插入函数
+    baseTheme, //基础样式
+    EditorView.lineWrapping, //换行
+    basicSetup, //基础配置
+    javascript(), //js语言支持
+    autocompletion({ override: [myCompletions] }), //补全提示
   ];
   /**
    * @description 初始化编辑器
