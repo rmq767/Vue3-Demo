@@ -5,7 +5,8 @@
     :width="800"
     center
     :close-on-click-modal="false"
-    :before-close="close"
+    :destroy-on-close="true"
+    @close="close"
   >
     <div class="editor-container">
       <TreeCom
@@ -125,9 +126,9 @@ const open = () => {
     init();
   });
 };
-const close = (done: any) => {
+const close = () => {
   destroyed();
-  done();
+  state.visible = false;
 };
 
 defineExpose({

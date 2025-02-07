@@ -9,6 +9,12 @@ import {
 } from "@codemirror/view";
 import { EditorState } from "@codemirror/state";
 import { javascript } from "@codemirror/lang-javascript";
+import {
+  autocompletion,
+  Completion,
+  CompletionContext,
+  CompletionResult,
+} from "@codemirror/autocomplete";
 import { basicSetup } from "codemirror";
 import { ref, shallowRef } from "vue";
 
@@ -175,6 +181,34 @@ export const baseTheme = EditorView.baseTheme({
   },
 });
 
+/**
+ * @description 补全提示
+ */
+const completions = [
+  {
+    label: "SUM",
+    apply: insetCompletion,
+  },
+  {
+    label: "IF",
+    apply: insetCompletion,
+  },
+];
+/**
+ * @description 补全提示
+ * @param {CompletionContext} context
+ * @return {*}
+ */
+function myCompletions(context: CompletionContext) {
+  // 匹配到以s或su或sum或i或if开头的单词
+  let before = context.matchBefore(/[s](?:u(?:m)?)?|[i](?:f)?/gi);
+  if (!context.explicit && !before) return null;
+  return {
+    from: before ? before.from : context.pos,
+    options: completions,
+  };
+}
+
 export const useCodemirror = () => {
   const code = ref("");
   const view = shallowRef<EditorView>();
@@ -186,6 +220,7 @@ export const useCodemirror = () => {
     EditorView.lineWrapping,
     basicSetup,
     javascript(),
+    autocompletion({ override: [myCompletions] }),
   ];
   /**
    * @description 初始化编辑器
@@ -280,3 +315,27 @@ export const functionDescription = (key: string) => {
   };
   return info[key as keyof typeof info];
 };
+
+/**
+ * @description 插入补全
+ * @param {EditorView} view
+ * @param {Completion} completion
+ * @param {number} from
+ * @param {number} to
+ */
+function insetCompletion(
+  view: EditorView,
+  completion: Completion,
+  from: number,
+  to: number
+) {
+  const content = `{{${completion.label}}}()`;
+  const anchor = from + content.length - 1;
+  const transaction = view.state.update({
+    changes: { from, to, insert: content }, // 在当前光标位置插入标签
+    selection: {
+      anchor: anchor,
+    }, // 指定新光标位置
+  });
+  view.dispatch(transaction);
+}
