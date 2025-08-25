@@ -44,7 +44,7 @@
 export default { name: "Editor" };
 </script>
 <script lang="ts" setup>
-import { nextTick, reactive } from "vue";
+import { nextTick, reactive, watch } from "vue";
 import TreeCom from "./components/tree.vue";
 import DescCom from "./components/desc.vue";
 import { useCodemirror, functionDescription } from ".";
@@ -88,6 +88,7 @@ const state = reactive({
 });
 
 const { code, view, editorRef, init, destroyed, insertText } = useCodemirror();
+
 /**
  * @description 插入标签
  */
@@ -118,7 +119,9 @@ const hoverFn = (data: Tree) => {
  */
 const submit = () => {
   const data = view.value?.state.doc;
-  console.log(data);
+  const text = data?.toString();
+  const str = text?.replace(/[{}\[\]]/g, "");
+  console.log(str);
 };
 const open = () => {
   state.visible = true;

@@ -13,10 +13,10 @@ import {
   autocompletion,
   Completion,
   CompletionContext,
-  CompletionResult,
 } from "@codemirror/autocomplete";
 import { basicSetup } from "codemirror";
 import { ref, shallowRef } from "vue";
+import { SUM, IF } from "@formulajs/formulajs";
 
 /**
  * @description 插入tag
@@ -221,7 +221,9 @@ export const useCodemirror = () => {
     basicSetup, //基础配置
     javascript(), //js语言支持
     autocompletion({ override: [myCompletions] }), //补全提示
+    listenerInput(view.value!),
   ];
+
   /**
    * @description 初始化编辑器
    */
@@ -338,4 +340,20 @@ function insetCompletion(
     }, // 指定新光标位置
   });
   view.dispatch(transaction);
+}
+
+/**
+ * @description 监听输入事件
+ * @param {EditorView} view
+ * @return {*}
+ */
+function listenerInput(view: EditorView) {
+  return EditorView.updateListener.of((update) => {
+    // 监听输入事件
+    if (update.docChanged) {
+      const text = update.state.doc.toString();
+      const str = text?.replace(/[{}\[\]]/g, "");
+      console.log(str);
+    }
+  });
 }
