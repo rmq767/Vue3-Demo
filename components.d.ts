@@ -8,7 +8,6 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     CameraControl: typeof import('./src/components/Gis/components/cameraControl.vue')['default']
-    Catalogue: typeof import('./src/components/Catalogue/index.vue')['default']
     Desc: typeof import('./src/components/Editor/components/desc.vue')['default']
     Dialog: typeof import('./src/components/Dialog/index.vue')['default']
     Editor: typeof import('./src/components/Editor/index.vue')['default']
@@ -49,7 +48,6 @@ declare module 'vue' {
     RouterView: typeof import('vue-router')['RouterView']
     ShowTable: typeof import('./src/components/ShowTable/index.vue')['default']
     Sign: typeof import('./src/components/Gis/sign.vue')['default']
-    TableTree: typeof import('./src/components/TableTree/index.vue')['default']
     Tree: typeof import('./src/components/Editor/components/tree.vue')['default']
     Zoom: typeof import('./src/components/Gis/components/zoom.vue')['default']
   }

@@ -21,8 +21,8 @@
             <el-col :span="6" :offset="0">
               <span>项目：</span>
               <el-select
-                v-model="item.field"
-                @change="(value:number)=>setFieldType(value,item)"
+                v-model="item.id"
+                @change="(value:number)=>setidType(value,item)"
               >
                 <el-option
                   v-for="item in getItemsWithType()"
@@ -97,8 +97,8 @@
             <el-col :span="6" :offset="0">
               <span>项目：</span>
               <el-select
-                v-model="item.field"
-                @change="(value:number)=>setFieldType(value,item)"
+                v-model="item.id"
+                @change="(value:number)=>setidType(value,item)"
               >
                 <el-option
                   v-for="item in getItemsWithType()"
@@ -218,8 +218,13 @@
 export default { name: "RuleLinkage" };
 </script>
 <script lang="ts" setup>
-import { computed, reactive } from "vue";
+import { reactive } from "vue";
 import { SafeComparator } from ".";
+import {
+  RuleLinkageActions,
+  RuleLinkageConditions,
+  RuleLinkageTableDataParams,
+} from "@/types/rule-linkage";
 
 const state = reactive({
   tableData: [
@@ -284,26 +289,26 @@ const state = reactive({
       value: null,
       options: null,
     },
-  ],
+  ] as RuleLinkageTableDataParams[],
   form: {
     ruleName: "",
     conditions: [
       {
-        field: "",
+        id: "",
         symbol: "",
         value: "",
         type: "",
         options: null,
       },
-    ],
+    ] as RuleLinkageConditions[],
     actions: [
       {
-        field: "",
+        id: "",
         value: "",
         type: "",
         options: null,
       },
-    ],
+    ] as RuleLinkageActions[],
   },
   symbolOption: [">", "<", ">=", "<=", "==", "!=", "为空", "不为空"],
   ruleList: [
@@ -311,14 +316,14 @@ const state = reactive({
       ruleName: "技术==js&&工龄>=3，则周期为2025-07-28",
       conditions: [
         {
-          field: 1,
+          id: 1,
           symbol: "==",
           value: "js",
           type: "input",
           options: null,
         },
         {
-          field: 2,
+          id: 2,
           symbol: ">=",
           value: 3,
           type: "number",
@@ -327,7 +332,7 @@ const state = reactive({
       ],
       actions: [
         {
-          field: 4,
+          id: 4,
           value: "2025-07-28",
           type: "date",
           options: null,
@@ -338,7 +343,7 @@ const state = reactive({
     //   ruleName: "2",
     //   conditions: [
     //     {
-    //       field: 31,
+    //       id: 31,
     //       symbol: "!=",
     //       value: "炒粉",
     //       type: "select",
@@ -356,7 +361,7 @@ const state = reactive({
     //   ],
     //   actions: [
     //     {
-    //       field: 32,
+    //       id: 32,
     //       value: "外卖",
     //       type: "select",
     //       options: [
@@ -379,7 +384,7 @@ const onSubmit = () => {
   state.ruleList.push(state.form);
   onReset();
 };
-const setFieldType = (value: number, row: any) => {
+const setidType = (value: number, row: any) => {
   const item = getItemsWithType().find((item) => item.id === value);
   if (item) {
     row.type = item.type;
@@ -403,7 +408,7 @@ function getItemsWithType() {
 }
 const addRule = () => {
   state.form.conditions.push({
-    field: "",
+    id: "",
     symbol: "",
     value: "",
     type: "",
@@ -415,7 +420,7 @@ const deleteRule = (index: number) => {
 };
 const addAction = () => {
   state.form.actions.push({
-    field: "",
+    id: "",
     value: "",
     type: "",
     options: null,
@@ -429,7 +434,7 @@ const onReset = () => {
     ruleName: "",
     conditions: [
       {
-        field: "",
+        id: "",
         symbol: "",
         value: "",
         type: "",
@@ -438,7 +443,7 @@ const onReset = () => {
     ],
     actions: [
       {
-        field: "",
+        id: "",
         value: "",
         type: "",
         options: null,
@@ -463,9 +468,9 @@ function getCondition(id: number, value: any) {
     let ids = [] as number[];
     // 拿到所有条件和id
     const symbols = item.conditions.map((condition: any) => {
-      ids.push(condition.field);
+      ids.push(condition.id);
       let str = "";
-      const node = findTreeNodeById(state.tableData, condition.field).node;
+      const node = findTreeNodeById(state.tableData, condition.id).node;
       // 保留原有的值类型
       switch (condition.symbol) {
         case "==":
@@ -500,7 +505,7 @@ function getCondition(id: number, value: any) {
       // 如果条件置空，则目标值也置空
       if (value === null || value === undefined || value === "") {
         item.actions.forEach((action: any) => {
-          const node = findTreeNodeById(state.tableData, action.field).node;
+          const node = findTreeNodeById(state.tableData, action.id).node;
           if (node) {
             node.value = undefined;
           }
@@ -511,14 +516,14 @@ function getCondition(id: number, value: any) {
       conditionStr = symbols.join(" && ");
       if (eval(conditionStr)) {
         item.actions.forEach((action: any) => {
-          const node = findTreeNodeById(state.tableData, action.field).node;
+          const node = findTreeNodeById(state.tableData, action.id).node;
           if (node) {
             node.value = action.value;
           }
         });
       } else {
         item.actions.forEach((action: any) => {
-          const node = findTreeNodeById(state.tableData, action.field).node;
+          const node = findTreeNodeById(state.tableData, action.id).node;
           if (node) {
             node.value = undefined;
           }

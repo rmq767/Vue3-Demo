@@ -413,7 +413,7 @@ export const useGantt = () => {
     );
   };
 
-  const init = (data: any[]) => {
+  const init = (data: any) => {
     gantt.init(ganttRef.value);
     gantt.parse(data);
   };

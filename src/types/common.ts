@@ -30,3 +30,8 @@ export interface Tree {
   id: string;
   children?: Tree[];
 }
+
+export interface Option {
+  label: string;
+  value: string;
+}
