@@ -37,7 +37,8 @@
     "three": "^0.161.0",
     "uuid": "^11.0.2",
     "vue": "^3.3.11",
-    "vue-router": "4"
+    "vue-router": "4",
+    "cesium": "^1.132.0"
   },
   "devDependencies": {
     "@types/echarts": "^4.9.22",
@@ -47,7 +48,6 @@
     "@types/three": "^0.161.2",
     "@vitejs/plugin-vue": "^4.5.2",
     "@vitejs/plugin-vue-jsx": "^3.1.0",
-    "cesium": "^1.115.0",
     "sass": "^1.69.7",
     "typescript": "^5.2.2",
     "unocss": "^0.58.3",
