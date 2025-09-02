@@ -391,12 +391,13 @@ function addSCRegion(viewer: Cesium.Viewer) {
     tolerance: 0.05, // 简化容差，值越小，越精确
     highQuality: true, // 是否花费更多时间使用其他算法创建更高质量的简化
   });
-
+  // 根据简化后的几何体创建裁剪区域
   const areas = new Cesium.ClippingPolygon({
     positions: Cesium.Cartesian3.fromDegreesArray(
       simplified.geometry.coordinates[0].flat()
     ),
   });
+  // 设置裁剪区域
   viewer.scene.globe.clippingPolygons = new Cesium.ClippingPolygonCollection({
     polygons: [areas],
     inverse: true,

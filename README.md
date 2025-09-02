@@ -21,13 +21,14 @@
 
 ### Cesium
 
-#### Cesium画点线面
+#### 1. Cesium画点线面
 
 * [Vue3中使用cesium](https://blog.csdn.net/qq_44775782/article/details/138565105)
 * [在线浏览](https://rmq767.github.io/Vue3-Demo/#/cesium/getData)
 
-#### Cesium实现类似大屏的部分区域展示柱状图效果
+#### 2. Cesium实现类似大屏的部分区域展示柱状图效果
 
+* [Cesium实现类似大屏的部分区域展示柱状图效果](https://blog.csdn.net/qq_44775782/article/details/151116045)
 * [在线浏览](https://rmq767.github.io/Vue3-Demo/#/Cesium/bar/index)
 
 ### contenteditable输入框
