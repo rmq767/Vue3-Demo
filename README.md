@@ -2,8 +2,8 @@
 # 根据文件路径访问路由
 
 > * 例如：
-> * 文件路径：views/Paper/index.vue
-> * 路由：/paper/index
+> * 文件路径：views/GSAP/scroll.vue
+> * 路由：/GSAP/scroll
 
 ## 仓库包含框架/组件
 
@@ -11,28 +11,24 @@
 1. "dhtmlx-gantt": "^8.0.6",//甘特图
 2. "cesium": "^1.115.0",//三维地图
 3. "grid-layout-plus": "^1.0.5",//拖拽网格布局
-4. "dhtmlx-gantt": "^8.0.6",//甘特图
-5. "leaflet": "^1.9.4",//二维地图
-6. "paper": "^0.12.17",//canvas绘图
-7. "three": "^0.161.0",//三维绘图
-8. "gsap": "^3.12.5",//动画库
-9. "@logicflow/core": "^2.0.6",//流程图
-10. contenteditable输入框
-11. "leaflet": "^1.9.4"//二维地图
-12. "leafer-ui": "^1.0.10"//canvas绘图,更简单、更好用
-13. "codemirror": "^6.0.1",//代码编辑器
+4. "leaflet": "^1.9.4",//二维地图
+5. "three": "^0.161.0",//三维绘图
+6. "gsap": "^3.12.5",//动画库
+7. "@logicflow/core": "^2.0.6",//流程图
+8. "leafer-ui": "^1.0.10"//canvas绘图
+9. "codemirror": "^6.0.1",//代码编辑器
 ```
-
-### Paper.js
-
-* [Vue3中使用paper.js](https://blog.csdn.net/qq_44775782/article/details/137052080)
-* [在线浏览](https://rmq767.github.io/Vue3-Demo/#/paper/index)
-* 封装程度不高，比较老，不建议用
 
 ### Cesium
 
+#### Cesium画点线面
+
 * [Vue3中使用cesium](https://blog.csdn.net/qq_44775782/article/details/138565105)
 * [在线浏览](https://rmq767.github.io/Vue3-Demo/#/cesium/getData)
+
+#### Cesium实现类似大屏的部分区域展示柱状图效果
+
+* [在线浏览](https://rmq767.github.io/Vue3-Demo/#/Cesium/bar/index)
 
 ### contenteditable输入框
 
