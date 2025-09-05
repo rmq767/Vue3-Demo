@@ -48,10 +48,6 @@ export const useCesium = (el: string) => {
       //   })
       // ),
     });
-    // 现在垂直地形夸张的操作，默认值0
-    viewer.value.scene.verticalExaggeration = 1;
-    // 垂直地形夸张相对高度，默认值0
-    viewer.value.scene.verticalExaggerationRelativeHeight = 0.1;
     // 去除版权样式
     (viewer.value.cesiumWidget.creditContainer as HTMLElement).style.display =
       "none"; //去除版权样式
@@ -373,6 +369,10 @@ async function addCesiumTerrain(viewer: Cesium.Viewer) {
   });
   viewer.terrainProvider = terrain;
   viewer.scene.globe.depthTestAgainstTerrain = true; //地形可以遮挡模型
+  // 现在垂直地形夸张的操作，默认值0
+  viewer.scene.verticalExaggeration = 1;
+  // 垂直地形夸张相对高度，默认值0
+  viewer.scene.verticalExaggerationRelativeHeight = 0.1;
 }
 /**
  * @description 添加四川区域
