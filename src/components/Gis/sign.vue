@@ -47,7 +47,7 @@
       @move-camera="moveCamera"
       @mouse-down="onMousedown"
     ></CameraControl>
-    <LengendDialog ref="lengendDialogRef"></LengendDialog>
+    <!-- <LengendDialog ref="lengendDialogRef"></LengendDialog> -->
   </el-dialog>
 </template>
 
@@ -65,22 +65,17 @@ import {
   getLongestDistance,
 } from "./index";
 import { Cpu, Compass, FullScreen } from "@element-plus/icons-vue";
-import { CesiumDataItem, CesiumDataType, CesiumFilterType } from "@/types/gis";
+import { CesiumDataItem, CesiumDataType } from "@/types/gis";
 import { nextTick } from "vue";
 import CameraControl from "./components/cameraControl.vue";
 import * as Cesium from "cesium";
 import Zoom from "./components/zoom.vue";
 
 const state = reactive({
-  checked: ["1", "2", "3", "4", "5", "直井", "水平井", "定向井"],
   visible: false,
   drawType: CesiumDataType.Point as CesiumDataType,
   isFull: false,
-  filterType: undefined as CesiumFilterType | undefined,
-  filterName: "" as string | undefined,
-  filterId: "" as string | undefined,
 });
-const editType = ref<CesiumFilterType>();
 let {
   viewer,
   zoomFn,
@@ -92,8 +87,15 @@ let {
   orbitTickFunction,
   getFrame,
 } = initCesium();
-const { data, initEvent, reDraw, reset, removeStaticEntites } =
-  useDrawAndGetData(viewer, editType);
+const {
+  data,
+  reDraw,
+  reset,
+  initDrawPoint,
+  initDrawLine,
+  initDrawArea,
+  initEntityMove,
+} = useDrawAndGetData(viewer);
 const { drawMapByData } = useDraw(viewer);
 const emits = defineEmits(["save"]);
 
@@ -139,57 +141,6 @@ const moveCamera = (type: string) => {
       break;
   }
 };
-// /**
-//  * @description 根据搜索数据画图
-//  */
-// const drawMap = (data: CesiumData[], fly: boolean) => {
-//   const allPoint = drawMapByData(data);
-//   filterDraw();
-//   if (fly && allPoint.length) {
-//     const [longitude, latitude] = getCenterPoint(allPoint);
-//     const { maxDistance } = getLongestDistance(allPoint);
-//     // 飞到指定高度
-//     const height = Math.round(maxDistance) * 1.5;
-//     flyTo(longitude, latitude, height);
-//   }
-// };
-// /**
-//  * @description 切换标签或隐藏 线的动画执行会出现问题 需要重新加载
-//  */
-// const visibleWindow = () => {
-//   drawMap(drawData.value, false);
-// };
-// const hiddenWindow = () => {
-//   viewer.value?.entities.removeAll();
-// };
-// /**
-//  * @description 每次重画 都要筛一下
-//  */
-// const filterDraw = () => {
-//   // 选择展示类型
-//   const entities = viewer.value?.entities.values;
-//   entities?.forEach((item: MyConstructorOptions) => {
-//     // 排除搜索画出来的图
-//     if (item.isStatic) {
-//       if (item.type === CesiumFilterType.Well) {
-//         // 井
-//         if (state.checked.includes(item.wellType!)) {
-//           item.show = true;
-//         } else {
-//           item.show = false;
-//         }
-//       } else {
-//         if (state.checked.includes(String(item.type!))) {
-//           item.show = true;
-//         } else {
-//           item.show = false;
-//         }
-//       }
-//     }
-//   });
-//   // 重新渲染
-//   viewer.value?.scene.requestRender();
-// };
 
 const save = () => {
   emits("save", data.value);
@@ -226,29 +177,21 @@ const drawOldGis = (data: CesiumDataItem[]) => {
   flyTo(longitude, latitude, maxDistance);
 };
 
-const open = (
-  type: CesiumDataType,
-  data: CesiumDataItem[],
-  other?: {
-    filterType?: CesiumFilterType;
-    filterId?: string;
-    filterName?: string;
-    editType?: CesiumFilterType;
-  }
-) => {
+const open = (type: CesiumDataType, data: CesiumDataItem[]) => {
   state.drawType = type;
-  editType.value = other?.editType;
-
-  state.filterType = other?.filterType;
-  state.filterId = other?.filterId;
-  state.filterName = other?.filterName;
-
   state.visible = true;
   nextTick(() => {
     // 初始化cesium
     init();
     // 初始化鼠标一些事件
-    initEvent(state.drawType);
+    if (state.drawType === CesiumDataType.Point) {
+      initDrawPoint();
+    } else if (state.drawType === CesiumDataType.Polyline) {
+      initDrawLine();
+    } else if (state.drawType === CesiumDataType.Polygon) {
+      initDrawArea();
+    }
+    initEntityMove(state.drawType);
     // 编辑重绘
     if (data && viewer.value) {
       drawOldGis(data);

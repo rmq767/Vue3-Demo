@@ -63,11 +63,6 @@ export const initCesium = (config?: CesiumConfig) => {
       sceneMode: Cesium.SceneMode.SCENE3D,
       // 点击选中元素
       selectionIndicator: false,
-      // 地形
-      // terrainProvider: await Cesium.createWorldTerrainAsync({
-      //   requestVertexNormals: true,
-      //   requestWaterMask: true
-      // }),
 
       baseLayer: new Cesium.ImageryLayer(
         new Cesium.UrlTemplateImageryProvider({
@@ -84,12 +79,6 @@ export const initCesium = (config?: CesiumConfig) => {
     // 去除版权样式
     (viewer.value.cesiumWidget.creditContainer as HTMLElement).style.display =
       "none"; //去除版权样式
-    // 再加上高德影像注记地图
-    // roadMap.value = viewer.value.imageryLayers.addImageryProvider(
-    //   new Cesium.UrlTemplateImageryProvider({
-    //     url: 'http://webst02.is.autonavi.com/appmaptile?x={x}&y={y}&z={z}&lang=zh_cn&size=1&scale=1&style=8'
-    //   })
-    // );
     // 获取比例 渲染清晰 抗锯齿
     viewer.value.resolutionScale = window.devicePixelRatio;
     viewer.value.scene.postProcessStages.fxaa.enabled = true;
@@ -114,11 +103,14 @@ export const initCesium = (config?: CesiumConfig) => {
   /**
    * @description 放大缩小地图
    */
-  const zoomFn = (type: "zoomIn" | "zoomOut", step = 1_0000) => {
+  const zoomFn = (type: "zoomIn" | "zoomOut") => {
+    // 获取当前相机高度
+    const height = viewer.value?.camera.positionCartographic.height!;
+    // 根据当前相机高度，设置缩放步长
     if (type === "zoomIn") {
-      viewer.value?.camera.zoomIn(step);
+      viewer.value?.camera.zoomIn(height / 10);
     } else {
-      viewer.value?.camera.zoomOut(step);
+      viewer.value?.camera.zoomOut(height / 10);
     }
   };
 
@@ -278,38 +270,34 @@ export const initCesium = (config?: CesiumConfig) => {
  * @param {(Ref<Cesium.Viewer | undefined>)} viewer
  * @return {*}
  */
-export const useDrawAndGetData = (
-  viewer: Ref<Cesium.Viewer | undefined>,
-  editType?: Ref<CesiumFilterType | undefined>
-) => {
+export const useDrawAndGetData = (viewer: Ref<Cesium.Viewer | undefined>) => {
   const data = ref<Array<CesiumDrawGetData>>([]); //存储坐标数据
   const index = ref<number>(0); //当前点的索引
   const pickEntity = shallowRef<Cesium.Entity>(); //当前点击的实体
-  // const alpha = 0.3;
+  const alpha = 0.3;
   const labelAlpha = 0.5;
+  let areaType = "area";
 
   // 多边形
-  // const polygonHierarchy = new Cesium.PolygonHierarchy();
-  // const polygonEntity = new Cesium.Entity({
-  //   name: 'polygon',
-  //   isStatic: false,
-  //   polygon: {
-  //     hierarchy: new Cesium.CallbackProperty(function () {
-  //       return polygonHierarchy;
-  //     }, false),
-  //     outline: true,
-  //     outlineColor: Cesium.Color.RED,
-  //     outlineWidth: 10,
-  //     fill: true,
-  //     material: Cesium.Color.RED.withAlpha(alpha)
-  //   }
-  // } as unknown as MyConstructorOptions);
+  const polygonHierarchy = new Cesium.PolygonHierarchy();
+  const polygonAreaEntity = new Cesium.Entity({
+    name: "polygon",
+    polygon: {
+      hierarchy: new Cesium.CallbackProperty(function () {
+        return polygonHierarchy;
+      }, false),
+      outline: true,
+      outlineColor: Cesium.Color.RED,
+      outlineWidth: 10,
+      fill: true,
+      material: Cesium.Color.RED.withAlpha(alpha),
+    },
+  });
 
   // 线段多边形
   let polygonLinePositions: Cesium.Cartesian3[] = [];
-  const polygonEntity = new Cesium.Entity({
+  const polygonLineEntity = new Cesium.Entity({
     name: "polygon",
-    isStatic: false,
     polyline: {
       positions: new Cesium.CallbackProperty(function () {
         let position = [];
@@ -327,13 +315,12 @@ export const useDrawAndGetData = (
         dashLength: 20,
       }),
     },
-  } as unknown as MyConstructorOptions);
+  });
 
   // 线段
   let polylinePositions: Cesium.Cartesian3[] = [];
   const polylineEntity = new Cesium.Entity({
     name: "polyline",
-    isStatic: false,
     polyline: {
       positions: new Cesium.CallbackProperty(function () {
         return polylinePositions;
@@ -341,82 +328,265 @@ export const useDrawAndGetData = (
       width: 20,
       material: new Cesium.PolylineArrowMaterialProperty(Cesium.Color.WHITE),
     },
-  } as unknown as MyConstructorOptions);
+  });
 
   /**
-   * @description 初始化画图事件
-   * @param {CesiumDataType} type
-   * @return {*}
+   * @description 画点
+   * @param {number[]} position 经纬度
+   * @param {number} index 索引
+   * @param {*} [config] 配置
    */
-  const initEvent = (type: CesiumDataType) => {
-    if (!viewer.value) {
-      return;
+  function drawPointFn(
+    position: number[],
+    index: number,
+    config?: {
+      point?: Cesium.PointGraphics.ConstructorOptions;
+      properties?: any;
     }
-    if (type === CesiumDataType.Polyline) {
-      viewer.value.entities.add(polylineEntity);
-    }
-    if (type === CesiumDataType.Polygon) {
-      const p = viewer.value.entities.add(polygonEntity);
-      if (editType && editType.value === CesiumFilterType.Platform) {
-        // (p.polygon as any).material = Cesium.Color.BLUE.withAlpha(alpha);
-        (p.polyline as any).material = new Cesium.PolylineDashMaterialProperty({
-          color: Cesium.Color.BLUE.withAlpha(1),
-          dashLength: 20,
+  ) {
+    // 添加点
+    viewer.value?.entities.add({
+      id: String(index),
+      name: "point",
+      properties: config?.properties || {},
+      position: Cesium.Cartesian3.fromDegrees(position[0], position[1], 10),
+      point: {
+        pixelSize: config?.point?.pixelSize || 6,
+        color: Cesium.Color.RED,
+        outlineColor: Cesium.Color.WHITE,
+        outlineWidth: 2,
+        heightReference: Cesium.HeightReference.RELATIVE_TO_GROUND,
+        ...config?.point,
+      },
+      label: {
+        text: `点${index + 1}--[${position[0]},${position[1]}]`,
+        font: "12px sans-serif",
+        pixelOffset: new Cesium.Cartesian2(0, -20),
+        fillColor: Cesium.Color.RED,
+        backgroundColor: Cesium.Color.WHITE.withAlpha(labelAlpha),
+        showBackground: true,
+      },
+    });
+  }
+
+  /**
+   * @description 获取笛卡尔坐标
+   */
+  function getCartesian(position: Cesium.Cartesian2) {
+    const cartesian = viewer.value!.camera.pickEllipsoid(
+      position,
+      viewer.value!.scene.globe.ellipsoid
+    );
+    return cartesian;
+  }
+
+  /**
+   * @description 编辑数据 重画展示
+   * @param {CesiumDrawGetData[]} oldData 渲染数据
+   * @param {CesiumDataType} type 画的类型
+   */
+  function reDraw(oldData: CesiumDrawGetData[], type: CesiumDataType) {
+    // 清空之前画的数据 不然会复用数据
+    reset();
+    oldData.forEach((item, index) => {
+      // 重画 点线面
+      if (type === CesiumDataType.Point) {
+        drawPointFn(item.degrees, index, {
+          point: {
+            pixelSize: 16,
+          },
+          properties: item.data,
         });
       }
+      if (type === CesiumDataType.Polyline) {
+        drawPointFn(item.degrees, index, {
+          point: {
+            pixelSize: 6,
+          },
+          properties: item.data,
+        });
+        polylinePositions.push(getCartesian3FromDegrees(item.degrees));
+      }
+      if (type === CesiumDataType.Polygon) {
+        drawPointFn(item.degrees, index, {
+          point: {
+            pixelSize: 6,
+          },
+          properties: item.data,
+        });
+        if (areaType === "area") {
+          polygonHierarchy.positions.push(
+            getCartesian3FromDegrees(item.degrees)
+          );
+        } else {
+          polygonLinePositions.push(getCartesian3FromDegrees(item.degrees));
+        }
+      }
+    });
+    data.value = oldData;
+    index.value = oldData.length;
+  }
+
+  /**
+   * @description 重置数据
+   */
+  function reset() {
+    data.value = [];
+    index.value = 0;
+    polylinePositions = [];
+    polygonHierarchy.positions = [];
+    polygonLinePositions = [];
+  }
+  /**
+   * @description 根据点击位置获取经纬度
+   * @param {Cesium.Cartesian2} position
+   * @return {*}
+   */
+  function getPostionFormClick(position: Cesium.Cartesian2) {
+    // 获取点击位置笛卡尔坐标
+    const cartesian = viewer.value?.camera.pickEllipsoid(
+      position,
+      viewer.value?.scene.globe.ellipsoid
+    );
+    // 获取点击位置的经纬度坐标
+    const cartographic = Cesium.Cartographic.fromCartesian(cartesian!);
+    const longitude = Number(
+      Cesium.Math.toDegrees(cartographic.longitude).toFixed(6)
+    );
+    const latitude = Number(
+      Cesium.Math.toDegrees(cartographic.latitude).toFixed(6)
+    );
+    return { longitude, latitude, cartesian };
+  }
+  /**
+   * @description 初始化绘制点
+   * @return {*}
+   */
+  function initDrawPoint() {
+    if (!viewer.value) {
+      return;
     }
     // 监听地图点击事件
     viewer.value.screenSpaceEventHandler.setInputAction(
       (click: Cesium.ScreenSpaceEventHandler.PositionedEvent) => {
         const pick = viewer.value?.scene.pick(click.position);
-        if (!pick || pick.id.isStatic) {
-          // 获取点击位置笛卡尔坐标
-          const cartesian = viewer.value?.camera.pickEllipsoid(
-            click.position,
-            viewer.value?.scene.globe.ellipsoid
-          );
-          // 获取点击位置的经纬度坐标
-          const cartographic = Cesium.Cartographic.fromCartesian(cartesian!);
-          const longitude = Number(
-            Cesium.Math.toDegrees(cartographic.longitude).toFixed(6)
-          );
-          const latitude = Number(
-            Cesium.Math.toDegrees(cartographic.latitude).toFixed(6)
-          );
+        if (!pick) {
+          // 获取点击位置经纬度坐标
+          const { latitude, longitude } = getPostionFormClick(click.position);
+          // 画单个点 重绘
+          index.value = 0;
+          data.value = [{ degrees: [longitude, latitude], index: index.value }];
+          removeAllEntities();
           // 画点
-          if (type === CesiumDataType.Point) {
-            // 画单个点 重绘
-            index.value = 0;
-            data.value = [
-              { degrees: [longitude, latitude], index: index.value },
-            ];
-            removeNonStaticEntites();
-            // 画点
-            drawPointFn([longitude, latitude], index.value, 16);
+          drawPointFn([longitude, latitude], index.value, {
+            point: {
+              pixelSize: 16,
+            },
+          });
+          // viewer.value?.scene.requestRender();
+          requestAnimationFrame(() => {
             viewer.value?.scene.requestRender();
-          } else {
-            // 画线和面的端点 连续
-            data.value.push({
-              degrees: [longitude, latitude],
-              index: index.value,
-            });
-            drawPointFn([longitude, latitude], index.value);
-          }
-          // 画线
-          if (type === CesiumDataType.Polyline) {
-            polylinePositions.push(cartesian!.clone());
-          }
-          // 画面
-          if (type === CesiumDataType.Polygon) {
-            // polygonHierarchy.positions.push(cartesian!.clone());
-            polygonLinePositions.push(cartesian!.clone());
-          }
-          index.value += 1;
+          });
         }
       },
       Cesium.ScreenSpaceEventType.LEFT_CLICK
     );
-
+  }
+  /**
+   * @description 初始化画线
+   * @return {*}
+   */
+  function initDrawLine() {
+    if (!viewer.value) {
+      return;
+    }
+    viewer.value.entities.add(polylineEntity);
+    // 监听地图点击事件
+    viewer.value.screenSpaceEventHandler.setInputAction(
+      (click: Cesium.ScreenSpaceEventHandler.PositionedEvent) => {
+        const pick = viewer.value?.scene.pick(click.position);
+        if (!pick) {
+          // 获取点击位置经纬度坐标
+          const { latitude, longitude, cartesian } = getPostionFormClick(
+            click.position
+          );
+          // 画线和面的端点 连续
+          data.value.push({
+            degrees: [longitude, latitude],
+            index: index.value,
+          });
+          drawPointFn([longitude, latitude], index.value);
+          // 画线
+          polylinePositions.push(cartesian!.clone());
+          index.value += 1;
+          // viewer.value?.scene.requestRender();
+          requestAnimationFrame(() => {
+            viewer.value?.scene.requestRender();
+          });
+        }
+      },
+      Cesium.ScreenSpaceEventType.LEFT_CLICK
+    );
+  }
+  /**
+   * @description 初始化画面
+   * @param {("area" | "line")} [type="area"]
+   * @return {*}
+   */
+  function initDrawArea(type: "area" | "line" = "area") {
+    areaType = type;
+    if (!viewer.value) {
+      return;
+    }
+    if (type === "area") {
+      const p = viewer.value.entities.add(polygonAreaEntity);
+      (p.polygon as any).material = Cesium.Color.BLUE.withAlpha(alpha);
+    } else {
+      const p = viewer.value.entities.add(polygonLineEntity);
+      (p.polyline as any).material = new Cesium.PolylineDashMaterialProperty({
+        color: Cesium.Color.BLUE.withAlpha(1),
+        dashLength: 20,
+      });
+    }
+    // 监听地图点击事件
+    viewer.value.screenSpaceEventHandler.setInputAction(
+      (click: Cesium.ScreenSpaceEventHandler.PositionedEvent) => {
+        const pick = viewer.value?.scene.pick(click.position);
+        if (!pick) {
+          // 获取点击位置经纬度坐标
+          const { latitude, longitude, cartesian } = getPostionFormClick(
+            click.position
+          );
+          // 画线和面的端点 连续
+          data.value.push({
+            degrees: [longitude, latitude],
+            index: index.value,
+          });
+          drawPointFn([longitude, latitude], index.value);
+          if (type === "area") {
+            polygonHierarchy.positions.push(cartesian!.clone());
+          } else {
+            polygonLinePositions.push(cartesian!.clone());
+          }
+          index.value += 1;
+          // viewer.value?.scene.requestRender();
+          requestAnimationFrame(() => {
+            viewer.value?.scene.requestRender();
+          });
+        }
+      },
+      Cesium.ScreenSpaceEventType.LEFT_CLICK
+    );
+  }
+  /**
+   * @description 初始化拖动entity事件
+   * @param {CesiumDataType} type
+   * @return {*}
+   */
+  function initEntityMove(type: CesiumDataType) {
+    if (!viewer.value) {
+      return;
+    }
     // 鼠标左键按下
     viewer.value.screenSpaceEventHandler.setInputAction(
       (click: Cesium.ScreenSpaceEventHandler.PositionedEvent) => {
@@ -470,162 +640,58 @@ export const useDrawAndGetData = (
           pick.id.name !== undefined
         ) {
           (viewer.value as any)._container.style.cursor = "pointer";
-          // 有data才展示
-          if (pick.id.data) {
-            showTooltip(move.endPosition.x, move.endPosition.y, pick.id.data);
-          }
         } else {
           // 移除弹框
           (viewer.value as any)._container.style.cursor = "default";
-          const tipsEl = document.getElementById("cesium-tips") as HTMLElement;
-          if (tipsEl) {
-            tipsEl.style.display = "none";
-          }
         }
         if (pickEntity.value) {
           // 获取点位实体的坐标
           const index = Number(pickEntity.value.id);
           const cartesian = getCartesian(move.endPosition);
           const degrees = getDegreesFromCartesian3(cartesian!);
-
           // 修改坐标
           data.value[index].degrees = degrees;
           // 更新点位置
-          const point = viewer.value!.entities.getById(String(index))!;
-          (point.position as any) = getCartesian3FromDegrees(degrees, 10);
-          (point.label!.text as any) = `点${index + 1}--[${degrees[0]},${
-            degrees[1]
-          }]`;
+          (pickEntity.value.position as any) = cartesian;
+          (pickEntity.value.label!.text as any) = `点${index + 1}--[${
+            degrees[0]
+          },${degrees[1]}]`;
           // 更新线的位置
           if (type === CesiumDataType.Polyline) {
             polylinePositions[index] = cartesian!;
           }
           // 更新面的位置
           if (type === CesiumDataType.Polygon) {
-            // polygonHierarchy.positions[index] = cartesian!;
-            polygonLinePositions[index] = cartesian!;
+            if (areaType === "area") {
+              polygonHierarchy.positions[index] = cartesian!;
+            } else {
+              polygonLinePositions[index] = cartesian!;
+            }
           }
-
           // 鼠标抬起重新渲染 非常重要
           viewer.value?.scene.requestRender();
         }
       },
       Cesium.ScreenSpaceEventType.MOUSE_MOVE
     );
-  };
+  }
 
-  /**
-   * @description 画点
-   * @param {number[]} position 经纬度
-   * @param {number} index 索引
-   * @param {*} [data] 信息
-   */
-  const drawPointFn = (
-    position: number[],
-    index: number,
-    size = 6,
-    data?: any
-  ) => {
-    // 添加点
-    viewer.value?.entities.add({
-      id: String(index),
-      name: "point",
-      data: data,
-      position: Cesium.Cartesian3.fromDegrees(position[0], position[1], 10),
-      isStatic: false,
-      point: {
-        pixelSize: size,
-        color: Cesium.Color.RED,
-        outlineColor: Cesium.Color.WHITE,
-        outlineWidth: 2,
-      },
-      label: {
-        text: `点${index + 1}--[${position[0]},${position[1]}]`,
-        font: "12px sans-serif",
-        pixelOffset: new Cesium.Cartesian2(0, -20),
-        fillColor: Cesium.Color.RED,
-        backgroundColor: Cesium.Color.WHITE.withAlpha(labelAlpha),
-        showBackground: true,
-      },
-    } as unknown as MyConstructorOptions);
-  };
-
-  /**
-   * @description 获取笛卡尔坐标
-   */
-  const getCartesian = (position: Cesium.Cartesian2) => {
-    const cartesian = viewer.value!.camera.pickEllipsoid(
-      position,
-      viewer.value!.scene.globe.ellipsoid
-    );
-    return cartesian;
-  };
-
-  /**
-   * @description 编辑数据 重画展示
-   * @param {CesiumDrawGetData[]} oldData 渲染数据
-   * @param {CesiumDataType} type 画的类型
-   */
-  const reDraw = (oldData: CesiumDrawGetData[], type: CesiumDataType) => {
-    // 清空之前画的数据 不然会复用数据
-    reset();
-    oldData.forEach((item, index) => {
-      // 重画 点线面
-      if (type === CesiumDataType.Point) {
-        drawPointFn(item.degrees, index, 16, item.data);
-      }
-      if (type === CesiumDataType.Polyline) {
-        drawPointFn(item.degrees, index, 6, item.data);
-        polylinePositions.push(getCartesian3FromDegrees(item.degrees, 10));
-      }
-      if (type === CesiumDataType.Polygon) {
-        drawPointFn(item.degrees, index, 6, item.data);
-        // polygonHierarchy.positions.push(
-        //   getCartesian3FromDegrees(item.degrees, 10)
-        // );
-        polygonLinePositions.push(getCartesian3FromDegrees(item.degrees, 10));
+  function removeAllEntities() {
+    viewer.value?.entities.values.forEach((item) => {
+      if (item) {
+        viewer.value?.entities.remove(item);
       }
     });
-    data.value = oldData;
-    index.value = oldData.length;
-  };
-
-  /**
-   * @description 重置数据
-   */
-  const reset = () => {
-    data.value = [];
-    index.value = 0;
-    polylinePositions = [];
-    // polygonHierarchy.positions = [];
-    polygonLinePositions = [];
-  };
-
-  const removeStaticEntites = () => {
-    const entities = viewer.value?.entities.values.filter(
-      (item: MyConstructorOptions) => item.isStatic
-    );
-    entities?.forEach((item: MyConstructorOptions) => {
-      viewer.value?.entities.remove(item);
-    });
-  };
-
-  const removeNonStaticEntites = () => {
-    const entities = viewer.value?.entities.values.filter(
-      (item: MyConstructorOptions) => !item.isStatic
-    );
-    entities?.forEach((item: MyConstructorOptions) => {
-      viewer.value?.entities.remove(item);
-    });
-  };
+  }
 
   return {
     data,
-    initEvent,
     reDraw,
-    removeStaticEntites,
-    removeNonStaticEntites,
     reset,
+    initDrawPoint,
+    initDrawLine,
+    initDrawArea,
+    initEntityMove,
   };
 };
 
@@ -1342,7 +1408,7 @@ export const getDegreesFromCartesian3 = (cartesian: Cesium.Cartesian3) => {
  */
 export const getCartesian3FromDegrees = (
   degrees: number[],
-  height?: number
+  height: number = 10
 ) => {
   const cartesian = Cesium.Cartesian3.fromDegrees(
     degrees[0],
