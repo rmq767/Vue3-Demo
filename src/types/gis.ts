@@ -15,6 +15,11 @@ export enum CesiumFilterType {
   Device,
 }
 
+export enum PolygonType {
+  Area = "area",
+  Line = "line",
+}
+
 export interface CesiumConfig {
   lookAt?: [number, number, number];
   max?: number;
@@ -29,28 +34,9 @@ export interface CesiumDrawGetData {
 
 export interface CesiumData {
   type: CesiumFilterType;
-  wellType: WellType;
   name: string;
-  businessId?: string;
-  legendUrl?: string;
   pointData: CesiumDataItem[];
-  info: {
-    type: string;
-    start: number;
-    end: number;
-    coordinate: [number, number];
-    distance?: number;
-    tvd?: number;
-    md?: number;
-    width?: number;
-    height?: number;
-    size?: number;
-  }[];
-  distance?: number;
-  length?: number;
-  point?: number[];
-  maxSize?: number;
-  minSize?: number;
+  remark?: string;
 }
 
 export type WellType = "直井" | "水平井" | "定向井";
@@ -59,8 +45,9 @@ export interface CesiumDataItem {
   lon: number;
   lat: number;
   id?: string;
-  flag?: string;
+  name?: string;
   remark?: string;
+  img?: string;
 }
 
 export interface MyConstructorOptions extends Cesium.Entity {

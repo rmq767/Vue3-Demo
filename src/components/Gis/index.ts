@@ -5,6 +5,7 @@ import {
   CesiumDrawGetData,
   CesiumFilterType,
   MyConstructorOptions,
+  PolygonType,
   WellType,
 } from "@/types/gis";
 import * as Cesium from "cesium";
@@ -276,7 +277,7 @@ export const useDrawAndGetData = (viewer: Ref<Cesium.Viewer | undefined>) => {
   const pickEntity = shallowRef<Cesium.Entity>(); //当前点击的实体
   const alpha = 0.3;
   const labelAlpha = 0.5;
-  let areaType = "area";
+  let areaType = "area" as PolygonType;
 
   // 多边形
   const polygonHierarchy = new Cesium.PolygonHierarchy();
@@ -309,7 +310,7 @@ export const useDrawAndGetData = (viewer: Ref<Cesium.Viewer | undefined>) => {
         return position;
       }, false),
       width: 4,
-      clampToGround: true,
+      // clampToGround: true,
       material: new Cesium.PolylineDashMaterialProperty({
         color: Cesium.Color.RED.withAlpha(1),
         dashLength: 20,
@@ -385,7 +386,7 @@ export const useDrawAndGetData = (viewer: Ref<Cesium.Viewer | undefined>) => {
    * @param {CesiumDrawGetData[]} oldData 渲染数据
    * @param {CesiumDataType} type 画的类型
    */
-  function reDraw(oldData: CesiumDrawGetData[], type: CesiumDataType) {
+  function draw(oldData: CesiumDrawGetData[], type: CesiumDataType) {
     // 清空之前画的数据 不然会复用数据
     reset();
     oldData.forEach((item, index) => {
@@ -414,7 +415,7 @@ export const useDrawAndGetData = (viewer: Ref<Cesium.Viewer | undefined>) => {
           },
           properties: item.data,
         });
-        if (areaType === "area") {
+        if (areaType === PolygonType.Area) {
           polygonHierarchy.positions.push(
             getCartesian3FromDegrees(item.degrees)
           );
@@ -442,7 +443,7 @@ export const useDrawAndGetData = (viewer: Ref<Cesium.Viewer | undefined>) => {
    * @param {Cesium.Cartesian2} position
    * @return {*}
    */
-  function getPostionFormClick(position: Cesium.Cartesian2) {
+  function getPositionFromClick(position: Cesium.Cartesian2) {
     // 获取点击位置笛卡尔坐标
     const cartesian = viewer.value?.camera.pickEllipsoid(
       position,
@@ -472,7 +473,7 @@ export const useDrawAndGetData = (viewer: Ref<Cesium.Viewer | undefined>) => {
         const pick = viewer.value?.scene.pick(click.position);
         if (!pick) {
           // 获取点击位置经纬度坐标
-          const { latitude, longitude } = getPostionFormClick(click.position);
+          const { latitude, longitude } = getPositionFromClick(click.position);
           // 画单个点 重绘
           index.value = 0;
           data.value = [{ degrees: [longitude, latitude], index: index.value }];
@@ -507,7 +508,7 @@ export const useDrawAndGetData = (viewer: Ref<Cesium.Viewer | undefined>) => {
         const pick = viewer.value?.scene.pick(click.position);
         if (!pick) {
           // 获取点击位置经纬度坐标
-          const { latitude, longitude, cartesian } = getPostionFormClick(
+          const { latitude, longitude, cartesian } = getPositionFromClick(
             click.position
           );
           // 画线和面的端点 连续
@@ -533,12 +534,12 @@ export const useDrawAndGetData = (viewer: Ref<Cesium.Viewer | undefined>) => {
    * @param {("area" | "line")} [type="area"]
    * @return {*}
    */
-  function initDrawArea(type: "area" | "line" = "area") {
+  function initDrawArea(type: PolygonType = PolygonType.Area) {
     areaType = type;
     if (!viewer.value) {
       return;
     }
-    if (type === "area") {
+    if (type === PolygonType.Area) {
       const p = viewer.value.entities.add(polygonAreaEntity);
       (p.polygon as any).material = Cesium.Color.BLUE.withAlpha(alpha);
     } else {
@@ -554,7 +555,7 @@ export const useDrawAndGetData = (viewer: Ref<Cesium.Viewer | undefined>) => {
         const pick = viewer.value?.scene.pick(click.position);
         if (!pick) {
           // 获取点击位置经纬度坐标
-          const { latitude, longitude, cartesian } = getPostionFormClick(
+          const { latitude, longitude, cartesian } = getPositionFromClick(
             click.position
           );
           // 画线和面的端点 连续
@@ -563,7 +564,7 @@ export const useDrawAndGetData = (viewer: Ref<Cesium.Viewer | undefined>) => {
             index: index.value,
           });
           drawPointFn([longitude, latitude], index.value);
-          if (type === "area") {
+          if (type === PolygonType.Area) {
             polygonHierarchy.positions.push(cartesian!.clone());
           } else {
             polygonLinePositions.push(cartesian!.clone());
@@ -596,8 +597,6 @@ export const useDrawAndGetData = (viewer: Ref<Cesium.Viewer | undefined>) => {
           pick.id &&
           pick.id.name !== "polygon" &&
           pick.id.name !== "polyline" &&
-          pick.id.name !== "areaLine" &&
-          pick.id.name !== "area" &&
           pick.id.name !== undefined
         ) {
           // 点击点
@@ -635,8 +634,6 @@ export const useDrawAndGetData = (viewer: Ref<Cesium.Viewer | undefined>) => {
           pick.id &&
           pick.id.name !== "polygon" &&
           pick.id.name !== "polyline" &&
-          pick.id.name !== "areaLine" &&
-          pick.id.name !== "area" &&
           pick.id.name !== undefined
         ) {
           (viewer.value as any)._container.style.cursor = "pointer";
@@ -662,7 +659,7 @@ export const useDrawAndGetData = (viewer: Ref<Cesium.Viewer | undefined>) => {
           }
           // 更新面的位置
           if (type === CesiumDataType.Polygon) {
-            if (areaType === "area") {
+            if (areaType === PolygonType.Area) {
               polygonHierarchy.positions[index] = cartesian!;
             } else {
               polygonLinePositions[index] = cartesian!;
@@ -686,7 +683,7 @@ export const useDrawAndGetData = (viewer: Ref<Cesium.Viewer | undefined>) => {
 
   return {
     data,
-    reDraw,
+    draw,
     reset,
     initDrawPoint,
     initDrawLine,
@@ -701,115 +698,166 @@ export const useDrawAndGetData = (viewer: Ref<Cesium.Viewer | undefined>) => {
  * @return {*}
  */
 export const useDraw = (viewer: Ref<Cesium.Viewer | undefined>) => {
-  const alpha = 0.3;
-  const showLabelHeight = 10_0000; //显示标签高度
   /**
-   * @description 画区域
-   * @param {Cesium.PolygonHierarchy} polygonHierarchy 区域坐标
-   * @param {string} type 类型
-   * @param {('area' | 'line')} [drawType='area'] 展示区域类型
-   * @return {*}
+   * @description 画面
+   * @param {Cesium.Cartesian3[]} positions
+   * @param {PolygonType} [drawType=PolygonType.Area]
+   * @param {{
+   *       polygon?: Cesium.PolygonGraphics.ConstructorOptions;
+   *       polyline?: Cesium.PolylineGraphics.ConstructorOptions;
+   *       label?: Cesium.LabelGraphics.ConstructorOptions;
+   *       showPoint?: boolean;
+   *       showLabel?: boolean;
+   *       properties?: any;
+   *     }} [config]
    */
-  const drawArea = (
-    polygonHierarchy: Cesium.PolygonHierarchy,
-    type: number,
+  function drawArea(
+    positions: Cesium.Cartesian3[],
+    drawType: PolygonType = PolygonType.Area, //展示区域类型
     config?: {
-      polygon?: any;
-      polyline?: any;
-      label?: any;
-    },
-    drawType: "area" | "line" = "area"
-  ) => {
-    config = {
-      polygon: {
-        material: Cesium.Color.RED.withAlpha(alpha),
-        ...config?.polygon,
-      },
-      polyline: {
-        material: new Cesium.PolylineDashMaterialProperty({
-          color: Cesium.Color.RED.withAlpha(alpha),
-          dashLength: 8,
-        }),
-        ...config?.polyline,
-      },
-      label: {
-        ...config?.label,
-      },
-    };
-    if (drawType === "area") {
-      viewer.value?.entities.add({
-        name: "area",
-        type,
-        isStatic: true,
+      polygon?: Cesium.PolygonGraphics.ConstructorOptions;
+      polyline?: Cesium.PolylineGraphics.ConstructorOptions;
+      label?: Cesium.LabelGraphics.ConstructorOptions;
+      showPoint?: boolean;
+      showLabel?: boolean;
+      properties?: any;
+    }
+  ) {
+    const showPoint = config?.showPoint ?? true; // 使用nullish coalescing操作符设置默认值
+    const showLabel = config?.showLabel ?? true; // 使用nullish coalescing操作符设置默认值
+
+    const polygonHierarchy = new Cesium.PolygonHierarchy(positions);
+    const dataSource = new Cesium.CustomDataSource("area");
+    let polygon: Cesium.Entity;
+
+    if (drawType === PolygonType.Area) {
+      polygon = new Cesium.Entity({
+        name: "polygon",
         polygon: {
+          material: Cesium.Color.RED.withAlpha(0.3),
           hierarchy: polygonHierarchy,
           fill: true,
-          ...config.polygon,
+          ...(config?.polygon || {}),
         },
-      } as unknown as MyConstructorOptions);
+      });
     } else {
-      // 画线段区域
       const data = [
         ...polygonHierarchy.positions,
         polygonHierarchy.positions[0],
       ];
-      viewer.value?.entities.add({
-        name: "areaLine",
-        type,
-        isStatic: true,
-        // polygon: {
-        //   hierarchy: polygonHierarchy,
-        //   fill: false
-        // },
+      polygon = new Cesium.Entity({
+        name: "polygon",
         polyline: {
+          material: new Cesium.PolylineDashMaterialProperty({
+            color: Cesium.Color.RED.withAlpha(0.3),
+            dashLength: 20,
+          }),
           positions: data,
           width: 4,
-          clampToGround: true,
-          ...config.polyline,
+          ...(config?.polyline || {}),
         },
-      } as unknown as MyConstructorOptions);
+      });
     }
 
-    // 画区域中心标签
-    const centerPoint = getCartesian3FromDegrees(
-      getCenterPoint(polygonHierarchy.positions)
-    );
-    drawLabel(centerPoint, type, config.label);
-  };
+    dataSource.entities.add(polygon);
+
+    if (showPoint) {
+      positions.forEach((p) => {
+        const entity = drawPoint(p, {
+          label: {
+            text: config?.properties.name,
+          },
+          properties: config?.properties,
+          isChildren: true,
+        });
+        dataSource.entities.add(entity);
+      });
+    }
+
+    if (showLabel) {
+      // 画区域中心标签
+      const centerPoint = getCartesian3FromDegrees(
+        getCenterPoint(polygonHierarchy.positions)
+      );
+      const label = drawLabel(centerPoint, config?.label);
+      dataSource.entities.add(label);
+    }
+
+    viewer.value?.dataSources.add(dataSource);
+  }
 
   /**
    * @description 画线
-   * @param {Cesium.Cartesian3[]} polylinePositions 线坐标
-   * @param {string} type 类型
-   * @param {boolean} [animate=false] 是否动画
+   * @param {Cesium.Cartesian3[]} positions
+   * @param {{
+   *       polyline?: Cesium.PolylineGraphics.ConstructorOptions;
+   *       properties?: any;
+   *       showPoint?: boolean;
+   *       showLabel?: boolean;
+   *     }} [config]
+   */
+  function drawLine(
+    positions: Cesium.Cartesian3[],
+    config?: {
+      polyline?: Cesium.PolylineGraphics.ConstructorOptions;
+      properties?: any;
+      showPoint?: boolean;
+      showLabel?: boolean;
+      animation?: boolean;
+    }
+  ) {
+    const showPoint = config?.showPoint ?? true; // 使用nullish coalescing操作符设置默认值
+    const showLabel = config?.showLabel ?? true; // 使用nullish coalescing操作符设置默认值
+    const animation = config?.animation ?? true; // 使用nullish coalescing操作符设置默认值
+
+    animation && animateLine(positions);
+    const dataSource = new Cesium.CustomDataSource("line");
+
+    const line = new Cesium.Entity({
+      name: "polyline",
+      polyline: {
+        positions,
+        width: 6,
+        material: Cesium.Color.WHITE.withAlpha(0.3),
+        ...(config?.polyline || {}),
+      },
+    });
+    dataSource.entities.add(line);
+
+    if (showPoint) {
+      positions.forEach((p) => {
+        const entity = drawPoint(p, {
+          label: {
+            text: config?.properties.name,
+          },
+          properties: config?.properties,
+          isChildren: true,
+        });
+        dataSource.entities.add(entity);
+      });
+    }
+
+    if (showLabel) {
+      const labelList = drawLineLabel(positions, config?.properties);
+      labelList.forEach((label) => {
+        dataSource.entities.add(label);
+      });
+    }
+
+    viewer.value?.dataSources.add(dataSource);
+  }
+
+  /**
+   * @description 绘制线段上的标签
+   * @param {Cesium.Cartesian3[]} polylinePositions
+   * @param {*} [properties]
    * @return {*}
    */
-  const drawLine = (
+  function drawLineLabel(
     polylinePositions: Cesium.Cartesian3[],
-    type: number,
-    info?: any,
-    animate = false
-  ) => {
-    viewer.value?.entities.add({
-      name: "polyline",
-      type,
-      isStatic: true,
-      polyline: {
-        positions: polylinePositions,
-        width: 6,
-        material: Cesium.Color.WHITE.withAlpha(alpha),
-        clampToGround: true,
-      },
-    } as unknown as MyConstructorOptions);
-    animate && animateLine(polylinePositions, type);
-    drawLineLabel(polylinePositions, type, info);
-  };
-
-  const drawLineLabel = (
-    polylinePositions: Cesium.Cartesian3[],
-    type: number,
-    info: any
-  ) => {
+    properties?: any
+  ) {
+    let entityArr = [];
     for (let i = 0; i < polylinePositions.length - 1; i++) {
       const p1 = polylinePositions[i];
       const p2 = polylinePositions[i + 1];
@@ -818,13 +866,11 @@ export const useDraw = (viewer: Ref<Cesium.Viewer | undefined>) => {
         p2,
         new Cesium.Cartesian3()
       );
-      viewer.value?.entities.add({
+      const labelEntity = new Cesium.Entity({
         name: "polyline",
-        type,
         position: midpoint,
-        isStatic: true,
         label: {
-          text: info,
+          text: properties?.name,
           font: "12px sans-serif",
           scale: 0.8,
           fillColor: Cesium.Color.BLACK.withAlpha(0.9),
@@ -833,81 +879,56 @@ export const useDraw = (viewer: Ref<Cesium.Viewer | undefined>) => {
           backgroundPadding: new Cesium.Cartesian2(2, 2),
           distanceDisplayCondition: new Cesium.DistanceDisplayCondition(
             0,
-            showLabelHeight
+            10_0000
           ),
-          scaleByDistance: new Cesium.NearFarScalar(
-            100,
-            1.5,
-            showLabelHeight,
-            0.8
-          ),
+          scaleByDistance: new Cesium.NearFarScalar(100, 1.5, 10_0000, 0.8),
           pixelOffset: new Cesium.Cartesian2(0, -10),
         },
-      } as unknown as MyConstructorOptions);
+      });
+      entityArr.push(labelEntity);
     }
-  };
-
+    return entityArr;
+  }
   /**
-   * @description 画点
+   * @description 画点 单独点/面和线的点
    * @param {Cesium.Cartesian3} position
-   * @param {string} type
    * @param {{
-   *       name?: string;
-   *       content?: string;
-   *     }} [data]
-   * @param {{
-   *       size?: number;
    *       img?: string;
    *       animate?: boolean;
-   *       billboard?: any;
-   *       label?: any;
-   *       point?: any;
+   *       billboard?: Cesium.BillboardGraphics.ConstructorOptions;
+   *       label?: Cesium.LabelGraphics.ConstructorOptions;
+   *       point?: Cesium.PointGraphics.ConstructorOptions;
+   *       properties?: any;
+   *       isChildren?: boolean;
    *     }} [config]
    * @return {*}
    */
-  const drawPoint = (
+  function drawPoint(
     position: Cesium.Cartesian3,
-    type: number,
-    data?: {
-      name?: string;
-      content?: string;
-      wellType?: WellType;
-    },
     config?: {
-      size?: number;
       img?: string;
       animate?: boolean;
-      billboard?: any;
-      label?: any;
-      point?: any;
+      billboard?: Cesium.BillboardGraphics.ConstructorOptions;
+      label?: Cesium.LabelGraphics.ConstructorOptions;
+      point?: Cesium.PointGraphics.ConstructorOptions;
+      properties?: any;
+      isChildren?: boolean; // 是否是面和线子节点
     }
-  ) => {
-    config = {
-      size: 4,
-      img: "",
-      animate: false,
-      billboard: {},
-      label: {},
-      point: {},
-      ...config,
-    };
+  ) {
+    const isChildren = config?.isChildren ?? false; // 使用nullish coalescing操作符设置默认值
+
+    let entity: Cesium.Entity;
     if (config?.img) {
-      config.animate && animatePoint(position, type, data?.wellType);
-      viewer.value?.entities.add({
+      // config.animate && animatePoint(position, type, data?.wellType);
+      entity = new Cesium.Entity({
         position: position,
-        type, //用来筛选一级展示对象
-        data, // 用来存信息
-        wellType: data?.wellType || "", //用来筛选二级井展示对象
-        isStatic: true, //用来区分地图标点还是静态渲染
+        properties: config?.properties || {}, // 用来存信息
         billboard: {
           image: config.img,
-          width: config.size,
-          height: config.size,
           color: Cesium.Color.RED,
-          ...config.billboard,
+          ...(config.billboard || {}),
         },
         label: {
-          text: data?.name,
           font: "12px sans-serif",
           scale: 0.8,
           pixelOffset: new Cesium.Cartesian2(0, -20),
@@ -916,34 +937,25 @@ export const useDraw = (viewer: Ref<Cesium.Viewer | undefined>) => {
           showBackground: true,
           distanceDisplayCondition: new Cesium.DistanceDisplayCondition(
             0,
-            showLabelHeight
+            10_0000
           ),
-          scaleByDistance: new Cesium.NearFarScalar(
-            100,
-            1.5,
-            showLabelHeight,
-            0.8
-          ),
+          scaleByDistance: new Cesium.NearFarScalar(100, 1.5, 10_0000, 0.8),
           ...config.label,
         },
-      } as unknown as MyConstructorOptions);
+      });
     } else {
-      config.animate && animatePoint(position, type, data?.wellType);
-      viewer.value?.entities.add({
+      // config.animate && animatePoint(position, type, data?.wellType);
+      entity = new Cesium.Entity({
         position: position,
-        type,
-        data,
-        wellType: data?.wellType || "",
-        isStatic: true,
+        properties: config?.properties || {}, // 用来存信息
         point: {
-          pixelSize: config.size,
+          pixelSize: config?.point?.pixelSize || 10,
           color: Cesium.Color.RED,
           outlineColor: Cesium.Color.WHITE,
           outlineWidth: 2,
-          ...config.point,
+          ...(config?.point || {}),
         },
         label: {
-          text: data?.name,
           font: "12px sans-serif",
           scale: 0.8,
           pixelOffset: new Cesium.Cartesian2(0, -20),
@@ -952,54 +964,45 @@ export const useDraw = (viewer: Ref<Cesium.Viewer | undefined>) => {
           showBackground: true,
           distanceDisplayCondition: new Cesium.DistanceDisplayCondition(
             0,
-            showLabelHeight
+            10_0000
           ),
-          scaleByDistance: new Cesium.NearFarScalar(
-            100,
-            1.5,
-            showLabelHeight,
-            0.8
-          ),
-          ...config.label,
+          scaleByDistance: new Cesium.NearFarScalar(100, 1.5, 10_0000, 0.8),
+          ...(config?.label || {}),
         },
-      } as unknown as MyConstructorOptions);
+      });
     }
-  };
+
+    if (!isChildren) {
+      const dataSource = new Cesium.CustomDataSource("point");
+      dataSource.entities.add(entity);
+      viewer.value?.dataSources.add(dataSource);
+    }
+
+    return entity;
+  }
 
   /**
-   * @description 画label
+   * @description 画点的label
    * @param {Cesium.Cartesian3} position
-   * @param {number} type
-   * @param {*} [info]
+   * @param {Cesium.LabelGraphics.ConstructorOptions} [label]
+   * @return {*}
    */
-  const drawLabel = (
+  function drawLabel(
     position: Cesium.Cartesian3,
-    type: number,
-    label?: any
-  ) => {
-    viewer.value?.entities.add({
+    label?: Cesium.LabelGraphics.ConstructorOptions
+  ) {
+    return new Cesium.Entity({
       position: position,
-      type,
-      isStatic: true,
       label: {
-        showbackground: false,
-        heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+        showBackground: false,
         disableDepthTestDistance: 0,
         scaleByDistance: new Cesium.NearFarScalar(100, 2, 100_0000, 0.5),
-        // pixelOffset: new Cesium.Cartesian2(0, -20),
-        // distanceDisplayCondition: new Cesium.DistanceDisplayCondition(
-        //   showLabelHeight
-        // ),
-        // 这里设置了就不会被遮盖了，设为负值则在更上层
-        // eyeOffset: new Cesium.Cartesian3(0, 0, -10000),
-        ...label,
+        ...(label || {}),
       },
-    } as unknown as MyConstructorOptions);
-  };
-  /**
-   * @description 初始化鼠标移入事件
-   */
-  const initHoverEvent = () => {
+    });
+  }
+
+  function initHoverEvent() {
     // 当创建图形HOOK和绘画HOOK同时存在，移动的事件会覆盖，绘画优先
     const moveFn = viewer.value?.screenSpaceEventHandler.getInputAction(
       Cesium.ScreenSpaceEventType.MOUSE_MOVE
@@ -1016,13 +1019,17 @@ export const useDraw = (viewer: Ref<Cesium.Viewer | undefined>) => {
         if (
           pick &&
           pick.id &&
-          pick.id.name !== "areaLine" &&
-          pick.id.name !== "area" &&
+          pick.id.name !== "polygon" &&
           pick.id.name !== "polyline"
         ) {
-          if (pick.id.data && pick.id.data.content) {
+          const entity = pick.id as Cesium.Entity;
+          if (entity && entity.properties) {
             (viewer.value as any)._container.style.cursor = "pointer";
-            showTooltip(move.endPosition.x, move.endPosition.y, pick.id);
+            showTooltip(
+              move.endPosition.x,
+              move.endPosition.y,
+              entity.properties.getValue()
+            );
           }
         } else {
           // 移除弹框
@@ -1035,14 +1042,11 @@ export const useDraw = (viewer: Ref<Cesium.Viewer | undefined>) => {
       },
       Cesium.ScreenSpaceEventType.MOUSE_MOVE
     );
-  };
+  }
   /**
    * @description 管道动画
    */
-  const animateLine = (
-    polylinePositions: Cesium.Cartesian3[],
-    type: number
-  ) => {
+  const animateLine = (polylinePositions: Cesium.Cartesian3[]) => {
     // 定义运动时间（以秒为单位）
     const duration = 2.0;
     let index = 1;
@@ -1052,8 +1056,6 @@ export const useDraw = (viewer: Ref<Cesium.Viewer | undefined>) => {
 
     viewer.value?.entities.add({
       name: "polyline",
-      type,
-      isStatic: true,
       polyline: {
         positions: new Cesium.CallbackProperty(function () {
           return positions;
@@ -1062,7 +1064,7 @@ export const useDraw = (viewer: Ref<Cesium.Viewer | undefined>) => {
         material: Cesium.Color.BLACK,
         clampToGround: true,
       },
-    } as unknown as MyConstructorOptions);
+    });
 
     // 定义一个函数来计算轨迹上任意时间点的位置
     function calculatePosition(t: number) {
@@ -1111,260 +1113,100 @@ export const useDraw = (viewer: Ref<Cesium.Viewer | undefined>) => {
     }
     requestAnimationFrame(animate); // 开始动画
   };
-  /**
-   * @description 点动画
-   */
-  const animatePoint = (
-    position: Cesium.Cartesian3,
-    type: number,
-    wellType?: string
-  ) => {
-    // 定义运动时间（以秒为单位）
-    const duration = 2.0;
-    const size = 0;
+  // /**
+  //  * @description 点动画
+  //  */
+  // const animatePoint = (
+  //   position: Cesium.Cartesian3,
+  //   type: number,
+  //   wellType?: string
+  // ) => {
+  //   // 定义运动时间（以秒为单位）
+  //   const duration = 2.0;
+  //   const size = 0;
 
-    const p1 = viewer.value?.entities.add({
-      type,
-      wellType: wellType || "",
-      position: position,
-      isStatic: true,
-      point: {
-        pixelSize: size,
-        color: Cesium.Color.TRANSPARENT,
-        outlineColor: Cesium.Color.WHITE.withAlpha(0.3),
-        outlineWidth: 2,
-      },
-    } as unknown as MyConstructorOptions);
-    const p2 = viewer.value?.entities.add({
-      type,
-      wellType: wellType || "",
-      position: position,
-      isStatic: true,
-      point: {
-        pixelSize: size,
-        color: Cesium.Color.TRANSPARENT,
-        outlineColor: Cesium.Color.WHITE.withAlpha(0.3),
-        outlineWidth: 2,
-      },
-    } as unknown as MyConstructorOptions);
-    const p3 = viewer.value?.entities.add({
-      type,
-      wellType: wellType,
-      position: position,
-      isStatic: true,
-      point: {
-        pixelSize: size,
-        color: Cesium.Color.TRANSPARENT,
-        outlineColor: Cesium.Color.WHITE.withAlpha(0.3),
-        outlineWidth: 2,
-      },
-    } as unknown as MyConstructorOptions);
+  //   const p1 = viewer.value?.entities.add({
+  //     type,
+  //     wellType: wellType || "",
+  //     position: position,
+  //     isStatic: true,
+  //     point: {
+  //       pixelSize: size,
+  //       color: Cesium.Color.TRANSPARENT,
+  //       outlineColor: Cesium.Color.WHITE.withAlpha(0.3),
+  //       outlineWidth: 2,
+  //     },
+  //   } as unknown as MyConstructorOptions);
+  //   const p2 = viewer.value?.entities.add({
+  //     type,
+  //     wellType: wellType || "",
+  //     position: position,
+  //     isStatic: true,
+  //     point: {
+  //       pixelSize: size,
+  //       color: Cesium.Color.TRANSPARENT,
+  //       outlineColor: Cesium.Color.WHITE.withAlpha(0.3),
+  //       outlineWidth: 2,
+  //     },
+  //   } as unknown as MyConstructorOptions);
+  //   const p3 = viewer.value?.entities.add({
+  //     type,
+  //     wellType: wellType,
+  //     position: position,
+  //     isStatic: true,
+  //     point: {
+  //       pixelSize: size,
+  //       color: Cesium.Color.TRANSPARENT,
+  //       outlineColor: Cesium.Color.WHITE.withAlpha(0.3),
+  //       outlineWidth: 2,
+  //     },
+  //   } as unknown as MyConstructorOptions);
 
-    // 使用requestAnimationFrame来更新实体位置
-    let startTime = 0;
-    function animate(time: number) {
-      if (!startTime) {
-        startTime = time;
-      }
-      const t = (time - startTime) / 1000; // 将时间转换为秒
-      if (t > duration) {
-        // 每个线段周期重置
-        startTime = 0;
-      }
-      (p1!.point!.pixelSize as any) = size + t * 12;
-      (p1!.point!.outlineColor as any) = Cesium.Color.WHITE.withAlpha(
-        0.3 + t * 0.2
-      );
-      (p2!.point!.pixelSize as any) = size + t * 9;
-      (p2!.point!.outlineColor as any) = Cesium.Color.WHITE.withAlpha(
-        0.3 + t * 0.1
-      );
-      (p3!.point!.pixelSize as any) = size + t * 6;
-      (p3!.point!.outlineColor as any) = Cesium.Color.WHITE.withAlpha(
-        0.3 + t * 0.05
-      );
-      viewer.value?.scene.requestRender();
-      requestAnimationFrame(animate); // 递归调用，继续动画
-    }
-    requestAnimationFrame(animate); // 开始动画
-  };
-  /**
-   * @description 根据搜索数据画图
-   */
-  const drawMapByData = (data: CesiumData[]) => {
-    // 获取所有实体的笛卡尔坐标
-    const allPointData: Cesium.Cartesian3[] = [];
-    data.forEach((item) => {
-      // 画面
-      if (
-        item.type === CesiumFilterType.Block ||
-        item.type === CesiumFilterType.Platform
-      ) {
-        const positions = item.pointData?.map((p) =>
-          getCartesian3FromDegrees([p.lon, p.lat])
-        );
-        const polygonHierarchy = new Cesium.PolygonHierarchy(positions);
-        if (item.type === CesiumFilterType.Block) {
-          drawArea(
-            polygonHierarchy,
-            item.type,
-            {
-              polyline: {
-                material: new Cesium.PolylineDashMaterialProperty({
-                  color: Cesium.Color.RED.withAlpha(1),
-                  dashLength: 20,
-                }),
-              },
-              label: {
-                font: "30px sans-serif",
-                text: item.name,
-                fillColor: Cesium.Color.RED.withAlpha(0.3),
-                // showBackground: true,
-                // 这里设置了就不会被遮盖了，设为负值则在更上层
-                // eyeOffset: new Cesium.Cartesian3(0, 0, -10000)
-              },
-            },
-            "line"
-          );
-        }
-        if (item.type === CesiumFilterType.Platform) {
-          drawArea(
-            polygonHierarchy,
-            item.type,
-            {
-              polyline: {
-                material: new Cesium.PolylineDashMaterialProperty({
-                  color: Cesium.Color.BLUE.withAlpha(1),
-                  dashLength: 20,
-                }),
-              },
-              label: {
-                font: "14px sans-serif",
-                text: item.name,
-                fillColor: Cesium.Color.BLUE.withAlpha(0.3),
-                showBackground: false,
-                // 这里设置了就不会被遮盖了，设为负值则在更上层
-                // eyeOffset: new Cesium.Cartesian3(0, 0, -1000)
-              },
-            },
-            "line"
-          );
-        }
-        item.pointData?.forEach((p) => {
-          const position = getCartesian3FromDegrees([p.lon, p.lat]);
-          allPointData.push(position.clone());
-          drawPoint(
-            position,
-            item.type,
-            {
-              name: p.flag,
-              content: p.remark,
-            },
-            {
-              label: {
-                fillColor: Cesium.Color.BLACK,
-              },
-            }
-          );
-        });
-      }
-      // 画线
-      if (item.type === CesiumFilterType.Pipeline) {
-        const positions = item.pointData?.map((p) =>
-          getCartesian3FromDegrees([p.lon, p.lat])
-        );
-        drawLine(positions!, item.type, item.name, true);
-        item.pointData?.forEach((p) => {
-          const position = getCartesian3FromDegrees([p.lon, p.lat]);
-          allPointData.push(position.clone());
-          drawPoint(
-            position,
-            item.type,
-            {
-              name: p.flag,
-              content: p.remark,
-            },
-            {
-              point: {
-                color: Cesium.Color.WHITE,
-                pixelSize: 6,
-                outlineWidth: 0,
-              },
-              label: {
-                fillColor: Cesium.Color.BLACK,
-              },
-            }
-          );
-        });
-      }
-      // 画点
-      if (
-        item.type === CesiumFilterType.Well ||
-        item.type === CesiumFilterType.Device
-      ) {
-        item.pointData?.forEach((p) => {
-          const position = getCartesian3FromDegrees([p.lon, p.lat], 2);
-          allPointData.push(position.clone());
-          // 井和设备label区别一下
-          if (item.type === CesiumFilterType.Well) {
-            // 画设备和井 name用name
-            drawPoint(
-              position,
-              item.type,
-              {
-                name: item.name,
-                content: p.remark,
-                wellType: item.wellType,
-              },
-              {
-                size: 16,
-                img: item.legendUrl,
-                animate: true,
-              }
-            );
-          }
-          if (item.type === CesiumFilterType.Device) {
-            // 画设备和井 name用name
-            drawPoint(
-              position,
-              item.type,
-              {
-                name: item.name,
-                content: p.remark,
-              },
-              {
-                size: 16,
-                img: item.legendUrl,
-                animate: true,
-                label: {
-                  fillColor: new Cesium.Color(0.722, 0.51, 0.188, 1),
-                },
-              }
-            );
-          }
-        });
-      }
-    });
-    return allPointData;
-  };
+  //   // 使用requestAnimationFrame来更新实体位置
+  //   let startTime = 0;
+  //   function animate(time: number) {
+  //     if (!startTime) {
+  //       startTime = time;
+  //     }
+  //     const t = (time - startTime) / 1000; // 将时间转换为秒
+  //     if (t > duration) {
+  //       // 每个线段周期重置
+  //       startTime = 0;
+  //     }
+  //     (p1!.point!.pixelSize as any) = size + t * 12;
+  //     (p1!.point!.outlineColor as any) = Cesium.Color.WHITE.withAlpha(
+  //       0.3 + t * 0.2
+  //     );
+  //     (p2!.point!.pixelSize as any) = size + t * 9;
+  //     (p2!.point!.outlineColor as any) = Cesium.Color.WHITE.withAlpha(
+  //       0.3 + t * 0.1
+  //     );
+  //     (p3!.point!.pixelSize as any) = size + t * 6;
+  //     (p3!.point!.outlineColor as any) = Cesium.Color.WHITE.withAlpha(
+  //       0.3 + t * 0.05
+  //     );
+  //     viewer.value?.scene.requestRender();
+  //     requestAnimationFrame(animate); // 递归调用，继续动画
+  //   }
+  //   requestAnimationFrame(animate); // 开始动画
+  // };
 
   return {
-    // drawArea,
-    // drawLine,
-    // drawPoint,
-    drawMapByData,
+    drawArea,
+    drawLine,
+    drawPoint,
     initHoverEvent,
   };
 };
 
-const showTooltip = (x: number, y: number, entity: any) => {
-  if (entity.data && entity.data.content) {
+const showTooltip = (x: number, y: number, info: any) => {
+  if (info && info.remark) {
     const tipsEl = document.getElementById("cesium-tips") as HTMLElement;
     if (tipsEl) {
       tipsEl.style.display = "block";
       tipsEl.style.left = x + 20 + "px";
       tipsEl.style.top = y + "px";
-      tipsEl.innerHTML = `<div>${entity.data.content}</div>`;
+      tipsEl.innerHTML = `<div>${info.remark}</div>`;
     } else {
       const tipsEl = document.createElement("div");
       tipsEl.id = "cesium-tips";
@@ -1408,7 +1250,7 @@ export const getDegreesFromCartesian3 = (cartesian: Cesium.Cartesian3) => {
  */
 export const getCartesian3FromDegrees = (
   degrees: number[],
-  height: number = 10
+  height: number = 0
 ) => {
   const cartesian = Cesium.Cartesian3.fromDegrees(
     degrees[0],
@@ -1492,43 +1334,3 @@ export const getLongestDistance = (positions: Cesium.Cartesian3[]) => {
     farthestPoint2,
   };
 };
-
-/**
- * @description gis图例筛选类型
- */
-export const filterGisType = [
-  {
-    label: "区块",
-    id: "1",
-  },
-  {
-    label: "平台",
-    id: "2",
-  },
-  {
-    label: "井",
-    id: "3",
-    children: [
-      {
-        label: "直井",
-        id: "直井",
-      },
-      {
-        label: "水平井",
-        id: "水平井",
-      },
-      {
-        label: "定向井",
-        id: "定向井",
-      },
-    ],
-  },
-  {
-    label: "管道",
-    id: "4",
-  },
-  {
-    label: "设备",
-    id: "5",
-  },
-];

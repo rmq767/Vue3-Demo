@@ -1,6 +1,6 @@
 <template>
   <el-dialog
-    title="地图标点"
+    title="只读渲染"
     v-model="state.visible"
     center
     :fullscreen="true"
@@ -40,14 +40,12 @@
           <Zoom @zoom="zoomFn" class="zoom-control"></Zoom>
         </div>
       </div>
-      <el-button type="primary" class="save" @click="save">保存</el-button>
     </div>
     <CameraControl
       class="camera-control"
       @move-camera="moveCamera"
       @mouse-down="onMousedown"
     ></CameraControl>
-    <!-- <LengendDialog ref="lengendDialogRef"></LengendDialog> -->
   </el-dialog>
 </template>
 
@@ -57,7 +55,6 @@ export default { name: "Cesium" };
 <script lang="ts" setup>
 import { reactive, ref } from "vue";
 import {
-  useDrawAndGetData,
   initCesium,
   getCartesian3FromDegrees,
   getCenterPoint,
@@ -65,7 +62,7 @@ import {
   getLongestDistance,
 } from "./index";
 import { Cpu, Compass, FullScreen } from "@element-plus/icons-vue";
-import { CesiumDataItem, CesiumDataType } from "@/types/gis";
+import { CesiumData, CesiumFilterType, PolygonType } from "@/types/gis";
 import { nextTick } from "vue";
 import CameraControl from "./components/cameraControl.vue";
 import * as Cesium from "cesium";
@@ -73,7 +70,6 @@ import Zoom from "./components/zoom.vue";
 
 const state = reactive({
   visible: false,
-  drawType: CesiumDataType.Point as CesiumDataType,
   isFull: false,
 });
 let {
@@ -87,16 +83,7 @@ let {
   orbitTickFunction,
   getFrame,
 } = initCesium();
-const {
-  data,
-  draw,
-  reset,
-  initDrawPoint,
-  initDrawLine,
-  initDrawArea,
-  initEntityMove,
-} = useDrawAndGetData(viewer);
-const emits = defineEmits(["save"]);
+const { drawArea, drawLine, drawPoint, initHoverEvent } = useDraw(viewer);
 
 const fullScreen = () => {
   // 是否已经进入全屏
@@ -141,60 +128,75 @@ const moveCamera = (type: string) => {
   }
 };
 
-const save = () => {
-  emits("save", data.value);
-  close();
-};
-
 const close = () => {
-  reset();
   destroyed();
-  data.value = [];
   state.visible = false;
 };
 
 /**
  * @description 编辑的时候 重绘出来
  */
-const drawOldGis = (data: CesiumDataItem[]) => {
-  if (!data.length) {
-    return;
-  }
-  const oldData = data.map((item, index) => {
-    return {
-      degrees: [item.lon, item.lat],
-      index,
-      data: item,
-    };
+const drawGis = (data: CesiumData[]) => {
+  let allPoints: Cesium.Cartesian3[] = [];
+  data.forEach((item) => {
+    const position = item.pointData.map((point) => {
+      return getCartesian3FromDegrees([point.lon, point.lat]);
+    });
+    allPoints.push(...position);
+
+    if (item.type === CesiumFilterType.Block) {
+      // 渲染面
+      drawArea(position, PolygonType.Area, {
+        properties: item,
+      });
+    } else if (item.type === CesiumFilterType.Pipeline) {
+      // 自定义渲染线上的点
+      drawLine(position, {
+        properties: item,
+        showPoint: false,
+      });
+      item.pointData.forEach((point) => {
+        drawPoint(getCartesian3FromDegrees([point.lon, point.lat]), {
+          properties: point,
+          point: {
+            color: Cesium.Color.BLUE,
+          },
+          label: {
+            text: point.remark,
+          },
+        });
+      });
+    } else if (item.type === CesiumFilterType.Well) {
+      // 普通点
+      drawPoint(position[0], {
+        properties: item,
+      });
+    } else if (item.type === CesiumFilterType.Device) {
+      // 图片点
+      drawPoint(position[0], {
+        properties: item,
+        img: item.pointData[0].img,
+        billboard: {
+          width: 50,
+          height: 50,
+        },
+      });
+    }
   });
-  draw(oldData, state.drawType);
-  const Cartesian3Arr = data.map((item) =>
-    getCartesian3FromDegrees([item.lon, item.lat])
-  );
-  const [longitude, latitude] = getCenterPoint(Cartesian3Arr);
-  const { maxDistance } = getLongestDistance(Cartesian3Arr);
+
+  const [longitude, latitude] = getCenterPoint(allPoints);
+  const { maxDistance } = getLongestDistance(allPoints);
   flyTo(longitude, latitude, maxDistance);
 };
 
-const open = (type: CesiumDataType, data: CesiumDataItem[]) => {
-  state.drawType = type;
+const open = (data: CesiumData[]) => {
   state.visible = true;
   nextTick(() => {
     // 初始化cesium
     init();
-    // 初始化鼠标一些事件
-    if (state.drawType === CesiumDataType.Point) {
-      initDrawPoint();
-    } else if (state.drawType === CesiumDataType.Polyline) {
-      initDrawLine();
-    } else if (state.drawType === CesiumDataType.Polygon) {
-      initDrawArea();
-    }
-    initEntityMove(state.drawType);
-    // 编辑重绘
-    if (data && viewer.value) {
-      drawOldGis(data);
-    }
+    initHoverEvent();
+    // 画图
+    drawGis(data);
   });
 };
 
@@ -205,7 +207,7 @@ defineExpose({
 
 <style lang="scss" scoped>
 #cesium {
-  height: calc(100vh - 54px);
+  height: calc(100vh - 75px);
 }
 #cesium-container {
   position: relative;

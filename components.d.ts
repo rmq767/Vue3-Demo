@@ -10,6 +10,7 @@ declare module 'vue' {
     CameraControl: typeof import('./src/components/Gis/components/cameraControl.vue')['default']
     Desc: typeof import('./src/components/Editor/components/desc.vue')['default']
     Dialog: typeof import('./src/components/Dialog/index.vue')['default']
+    Draw: typeof import('./src/components/Gis/draw.vue')['default']
     Editor: typeof import('./src/components/Editor/index.vue')['default']
     ElButton: typeof import('element-plus/es')['ElButton']
     ElButtonGroup: typeof import('element-plus/es')['ElButtonGroup']
