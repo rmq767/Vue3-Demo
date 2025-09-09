@@ -36,6 +36,25 @@ export interface CesiumData {
   type: CesiumFilterType;
   name: string;
   pointData: CesiumDataItem[];
+  businessId?: string;
+  wellType?: WellType;
+  info: {
+    type: string;
+    start: number;
+    end: number;
+    coordinate: [number, number];
+    distance?: number;
+    tvd?: number;
+    md?: number;
+    width?: number;
+    height?: number;
+    size?: number;
+  }[];
+  distance?: number;
+  length?: number;
+  point?: number[];
+  maxSize?: number;
+  minSize?: number;
   remark?: string;
 }
 
