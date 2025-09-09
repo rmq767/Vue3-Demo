@@ -12,10 +12,9 @@ export const Token =
 
 /**
  * @description 初始化cesium
- * @param {CesiumConfig} [config] 聚焦点
  * @return {*}
  */
-export const initCesium = (config?: CesiumConfig) => {
+export const initCesium = (el: string) => {
   const viewer = shallowRef<Cesium.Viewer>();
   const roadMap = shallowRef<Cesium.ImageryLayer>();
   const hasRoadMap = ref(false);
@@ -25,13 +24,12 @@ export const initCesium = (config?: CesiumConfig) => {
     min: 100, //最小缩放
     flyHeight: 1_000, //飞行高度
     pitch: -0.5,
-    ...config,
   };
   let frame: Cesium.Matrix4;
   let sphere: Cesium.BoundingSphere | null = null;
 
   const init = async () => {
-    viewer.value = new Cesium.Viewer("cesium", {
+    viewer.value = new Cesium.Viewer(el, {
       // 是否展示查询按钮 如果设置为false，将不会创建右上角查询(放大镜)按钮。
       geocoder: false,
       //查看器的显示模式 如果设置为false，将不会创建右上角投影方式控件(显示二三维切换按钮)。

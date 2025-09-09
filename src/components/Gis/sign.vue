@@ -86,7 +86,7 @@ let {
   flyTo,
   orbitTickFunction,
   getFrame,
-} = initCesium();
+} = initCesium("cesium");
 const {
   data,
   draw,

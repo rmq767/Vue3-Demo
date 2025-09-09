@@ -82,7 +82,7 @@ let {
   flyTo,
   orbitTickFunction,
   getFrame,
-} = initCesium();
+} = initCesium("cesium");
 const { drawArea, drawLine, drawPoint, initHoverEvent } = useDraw(viewer, true);
 
 const fullScreen = () => {
