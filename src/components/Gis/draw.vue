@@ -83,7 +83,7 @@ let {
   orbitTickFunction,
   getFrame,
 } = initCesium();
-const { drawArea, drawLine, drawPoint, initHoverEvent } = useDraw(viewer);
+const { drawArea, drawLine, drawPoint, initHoverEvent } = useDraw(viewer, true);
 
 const fullScreen = () => {
   // 是否已经进入全屏
@@ -154,15 +154,18 @@ const drawGis = (data: CesiumData[]) => {
       drawLine(position, {
         properties: item,
         showPoint: false,
+        is3D: true,
       });
       item.pointData.forEach((point) => {
         drawPoint(getCartesian3FromDegrees([point.lon, point.lat]), {
           properties: point,
           point: {
             color: Cesium.Color.BLUE,
+            heightReference: Cesium.HeightReference.NONE,
           },
           label: {
             text: point.remark,
+            heightReference: Cesium.HeightReference.NONE,
           },
         });
       });
@@ -309,7 +312,7 @@ defineExpose({
 .camera-control {
   position: absolute;
   right: 47px;
-  bottom: 185px;
+  bottom: 25%;
 }
 .zoom-control {
   position: absolute;

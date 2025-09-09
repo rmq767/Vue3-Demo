@@ -1,15 +1,11 @@
 import {
   CesiumConfig,
-  CesiumData,
   CesiumDataType,
   CesiumDrawGetData,
-  CesiumFilterType,
-  MyConstructorOptions,
   PolygonType,
-  WellType,
 } from "@/types/gis";
 import * as Cesium from "cesium";
-import { Ref, ref, shallowRef } from "vue";
+import { Ref, ref, shallowRef, watch } from "vue";
 
 export const Token =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI5NGI2Y2QzZS01NDNhLTQzNjItOWQ4ZC1hYTk2ZDJkMjg2NjEiLCJpZCI6MjAxODIxLCJpYXQiOjE3MTAzOTkxNDJ9.QfyFdDreE7x97CtwJtX_z3XcLpwfqfadhdtnIWHRBiU";
@@ -697,7 +693,16 @@ export const useDrawAndGetData = (viewer: Ref<Cesium.Viewer | undefined>) => {
  * @param {(Ref<Cesium.Viewer | undefined>)} viewer
  * @return {*}
  */
-export const useDraw = (viewer: Ref<Cesium.Viewer | undefined>) => {
+export const useDraw = (
+  viewer: Ref<Cesium.Viewer | undefined>,
+  addTerrain: boolean = false
+) => {
+  // 是否添加地形
+  watch(viewer, (newVal) => {
+    if (newVal && addTerrain) {
+      addCesiumTerrain(newVal);
+    }
+  });
   /**
    * @description 画面
    * @param {Cesium.Cartesian3[]} positions
@@ -737,6 +742,7 @@ export const useDraw = (viewer: Ref<Cesium.Viewer | undefined>) => {
           material: Cesium.Color.RED.withAlpha(0.3),
           hierarchy: polygonHierarchy,
           fill: true,
+          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
           ...(config?.polygon || {}),
         },
       });
@@ -754,6 +760,7 @@ export const useDraw = (viewer: Ref<Cesium.Viewer | undefined>) => {
           }),
           positions: data,
           width: 4,
+          clampToGround: true,
           ...(config?.polyline || {}),
         },
       });
@@ -791,38 +798,54 @@ export const useDraw = (viewer: Ref<Cesium.Viewer | undefined>) => {
    * @param {Cesium.Cartesian3[]} positions
    * @param {{
    *       polyline?: Cesium.PolylineGraphics.ConstructorOptions;
+   *       polylineVolume?: Cesium.PolylineVolumeGraphics.ConstructorOptions;
    *       properties?: any;
    *       showPoint?: boolean;
    *       showLabel?: boolean;
+   *       is3D?: boolean;
    *     }} [config]
    */
   function drawLine(
     positions: Cesium.Cartesian3[],
     config?: {
       polyline?: Cesium.PolylineGraphics.ConstructorOptions;
+      polylineVolume?: Cesium.PolylineVolumeGraphics.ConstructorOptions;
       properties?: any;
       showPoint?: boolean;
       showLabel?: boolean;
-      animation?: boolean;
+      is3D?: boolean;
     }
   ) {
     const showPoint = config?.showPoint ?? true; // 使用nullish coalescing操作符设置默认值
     const showLabel = config?.showLabel ?? true; // 使用nullish coalescing操作符设置默认值
-    const animation = config?.animation ?? true; // 使用nullish coalescing操作符设置默认值
+    const is3D = config?.is3D ?? false; // 使用nullish coalescing操作符设置默认值
 
-    animation && animateLine(positions);
     const dataSource = new Cesium.CustomDataSource("line");
 
-    const line = new Cesium.Entity({
-      name: "polyline",
-      polyline: {
-        positions,
-        width: 6,
-        material: Cesium.Color.WHITE.withAlpha(0.3),
-        ...(config?.polyline || {}),
-      },
-    });
-    dataSource.entities.add(line);
+    if (!is3D) {
+      const line = new Cesium.Entity({
+        name: "polyline",
+        polyline: {
+          positions,
+          width: 10,
+          material: Cesium.Color.WHITE.withAlpha(0.3),
+          clampToGround: true,
+          ...(config?.polyline || {}),
+        },
+      });
+      dataSource.entities.add(line);
+    } else {
+      const line = new Cesium.Entity({
+        name: "polyline",
+        polylineVolume: {
+          positions,
+          shape: computeCircle(20),
+          material: Cesium.Color.WHITE.withAlpha(0.6),
+          ...(config?.polylineVolume || {}),
+        },
+      });
+      dataSource.entities.add(line);
+    }
 
     if (showPoint) {
       positions.forEach((p) => {
@@ -883,6 +906,7 @@ export const useDraw = (viewer: Ref<Cesium.Viewer | undefined>) => {
           ),
           scaleByDistance: new Cesium.NearFarScalar(100, 1.5, 10_0000, 0.8),
           pixelOffset: new Cesium.Cartesian2(0, -10),
+          heightReference: Cesium.HeightReference.NONE,
         },
       });
       entityArr.push(labelEntity);
@@ -926,6 +950,7 @@ export const useDraw = (viewer: Ref<Cesium.Viewer | undefined>) => {
         billboard: {
           image: config.img,
           color: Cesium.Color.RED,
+          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
           ...(config.billboard || {}),
         },
         label: {
@@ -940,7 +965,8 @@ export const useDraw = (viewer: Ref<Cesium.Viewer | undefined>) => {
             10_0000
           ),
           scaleByDistance: new Cesium.NearFarScalar(100, 1.5, 10_0000, 0.8),
-          ...config.label,
+          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+          ...(config.label || {}),
         },
       });
     } else {
@@ -953,6 +979,7 @@ export const useDraw = (viewer: Ref<Cesium.Viewer | undefined>) => {
           color: Cesium.Color.RED,
           outlineColor: Cesium.Color.WHITE,
           outlineWidth: 2,
+          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
           ...(config?.point || {}),
         },
         label: {
@@ -967,11 +994,12 @@ export const useDraw = (viewer: Ref<Cesium.Viewer | undefined>) => {
             10_0000
           ),
           scaleByDistance: new Cesium.NearFarScalar(100, 1.5, 10_0000, 0.8),
+          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
           ...(config?.label || {}),
         },
       });
     }
-
+    // 单独的点直接添加到viewer中
     if (!isChildren) {
       const dataSource = new Cesium.CustomDataSource("point");
       dataSource.entities.add(entity);
@@ -997,6 +1025,7 @@ export const useDraw = (viewer: Ref<Cesium.Viewer | undefined>) => {
         showBackground: false,
         disableDepthTestDistance: 0,
         scaleByDistance: new Cesium.NearFarScalar(100, 2, 100_0000, 0.5),
+        heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
         ...(label || {}),
       },
     });
@@ -1043,153 +1072,6 @@ export const useDraw = (viewer: Ref<Cesium.Viewer | undefined>) => {
       Cesium.ScreenSpaceEventType.MOUSE_MOVE
     );
   }
-  /**
-   * @description 管道动画
-   */
-  const animateLine = (polylinePositions: Cesium.Cartesian3[]) => {
-    // 定义运动时间（以秒为单位）
-    const duration = 2.0;
-    let index = 1;
-    let startPoint = polylinePositions[index - 1];
-    let endPoint = polylinePositions[index];
-    let positions: Cesium.Cartesian3[] = [polylinePositions[0]];
-
-    viewer.value?.entities.add({
-      name: "polyline",
-      polyline: {
-        positions: new Cesium.CallbackProperty(function () {
-          return positions;
-        }, false),
-        width: 6,
-        material: Cesium.Color.BLACK,
-        clampToGround: true,
-      },
-    });
-
-    // 定义一个函数来计算轨迹上任意时间点的位置
-    function calculatePosition(t: number) {
-      // 使用简单的线性插值计算位置
-      let ratio = t / duration;
-      // // 解决动画到下一个时位置不准确的问题
-      if (ratio > 1) {
-        ratio = 1;
-      }
-      if (ratio >= 0.97) {
-        ratio = 1;
-      }
-      return Cesium.Cartesian3.lerp(
-        startPoint,
-        endPoint,
-        ratio,
-        new Cesium.Cartesian3()
-      );
-    }
-    // 使用requestAnimationFrame来更新实体位置
-    let startTime = 0;
-    function animate(time: number) {
-      if (!startTime) {
-        startTime = time;
-      }
-      let t = (time - startTime) / 1000; // 将时间转换为秒
-      t = Number(t.toFixed(2));
-      if (t > duration) {
-        // 每个线段周期重置
-        startTime = 0;
-        index++;
-        if (index > polylinePositions.length - 1) {
-          index = 1;
-          positions = [polylinePositions[index - 1]];
-        }
-        startPoint = polylinePositions[index - 1];
-        endPoint = polylinePositions[index];
-      }
-      const position = calculatePosition(t);
-      if (startTime) {
-        // 重置之后 calculatePosition 函数会返回第一个点，需要跳过 否则会闪一下
-        positions[index] = position.clone(); // 更新实体位置
-      }
-      viewer.value?.scene.requestRender();
-      requestAnimationFrame(animate); // 递归调用，继续动画
-    }
-    requestAnimationFrame(animate); // 开始动画
-  };
-  // /**
-  //  * @description 点动画
-  //  */
-  // const animatePoint = (
-  //   position: Cesium.Cartesian3,
-  //   type: number,
-  //   wellType?: string
-  // ) => {
-  //   // 定义运动时间（以秒为单位）
-  //   const duration = 2.0;
-  //   const size = 0;
-
-  //   const p1 = viewer.value?.entities.add({
-  //     type,
-  //     wellType: wellType || "",
-  //     position: position,
-  //     isStatic: true,
-  //     point: {
-  //       pixelSize: size,
-  //       color: Cesium.Color.TRANSPARENT,
-  //       outlineColor: Cesium.Color.WHITE.withAlpha(0.3),
-  //       outlineWidth: 2,
-  //     },
-  //   } as unknown as MyConstructorOptions);
-  //   const p2 = viewer.value?.entities.add({
-  //     type,
-  //     wellType: wellType || "",
-  //     position: position,
-  //     isStatic: true,
-  //     point: {
-  //       pixelSize: size,
-  //       color: Cesium.Color.TRANSPARENT,
-  //       outlineColor: Cesium.Color.WHITE.withAlpha(0.3),
-  //       outlineWidth: 2,
-  //     },
-  //   } as unknown as MyConstructorOptions);
-  //   const p3 = viewer.value?.entities.add({
-  //     type,
-  //     wellType: wellType,
-  //     position: position,
-  //     isStatic: true,
-  //     point: {
-  //       pixelSize: size,
-  //       color: Cesium.Color.TRANSPARENT,
-  //       outlineColor: Cesium.Color.WHITE.withAlpha(0.3),
-  //       outlineWidth: 2,
-  //     },
-  //   } as unknown as MyConstructorOptions);
-
-  //   // 使用requestAnimationFrame来更新实体位置
-  //   let startTime = 0;
-  //   function animate(time: number) {
-  //     if (!startTime) {
-  //       startTime = time;
-  //     }
-  //     const t = (time - startTime) / 1000; // 将时间转换为秒
-  //     if (t > duration) {
-  //       // 每个线段周期重置
-  //       startTime = 0;
-  //     }
-  //     (p1!.point!.pixelSize as any) = size + t * 12;
-  //     (p1!.point!.outlineColor as any) = Cesium.Color.WHITE.withAlpha(
-  //       0.3 + t * 0.2
-  //     );
-  //     (p2!.point!.pixelSize as any) = size + t * 9;
-  //     (p2!.point!.outlineColor as any) = Cesium.Color.WHITE.withAlpha(
-  //       0.3 + t * 0.1
-  //     );
-  //     (p3!.point!.pixelSize as any) = size + t * 6;
-  //     (p3!.point!.outlineColor as any) = Cesium.Color.WHITE.withAlpha(
-  //       0.3 + t * 0.05
-  //     );
-  //     viewer.value?.scene.requestRender();
-  //     requestAnimationFrame(animate); // 递归调用，继续动画
-  //   }
-  //   requestAnimationFrame(animate); // 开始动画
-  // };
 
   return {
     drawArea,
@@ -1334,3 +1216,41 @@ export const getLongestDistance = (positions: Cesium.Cartesian3[]) => {
     farthestPoint2,
   };
 };
+
+function computeCircle(radius: number) {
+  const positions = [];
+  for (let i = 0; i < 360; i++) {
+    const radians = Cesium.Math.toRadians(i);
+    positions.push(
+      new Cesium.Cartesian2(
+        radius * Math.cos(radians),
+        radius * Math.sin(radians)
+      )
+    );
+  }
+  return positions;
+}
+
+/**
+ * @description 添加山地地形
+ * @param {Cesium.Viewer} viewer
+ */
+async function addCesiumTerrain(viewer: Cesium.Viewer) {
+  // 关闭一些不必要的视觉效果，优化性能
+  viewer.scene.sun!.show = false; // 太阳
+  viewer.scene.moon!.show = false; // 月亮
+  viewer.scene.skyBox!.show = false; // 天空盒
+  viewer.scene.fog.enabled = false; // 雾
+  viewer.scene.skyAtmosphere!.show = false; // 大气
+  // 加载默认地形
+  const terrain = await Cesium.createWorldTerrainAsync({
+    requestVertexNormals: true,
+    requestWaterMask: false,
+  });
+  viewer.terrainProvider = terrain;
+  viewer.scene.globe.depthTestAgainstTerrain = false; //地形可以遮挡模型
+  // 现在垂直地形夸张的操作，默认值0
+  viewer.scene.verticalExaggeration = 1;
+  // 垂直地形夸张相对高度，默认值0
+  viewer.scene.verticalExaggerationRelativeHeight = 0.1;
+}

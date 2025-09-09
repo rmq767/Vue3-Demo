@@ -1,6 +1,6 @@
 <template>
   <div class="gis-getdata">
-    <div class="code">{{ state.code }}</div>
+    <el-input type="textarea" :rows="30" v-model="state.code"></el-input>
     <div class="handle">
       <el-button type="primary" @click="openGis">渲染数据</el-button>
     </div>
@@ -22,25 +22,25 @@ const state = reactive({
     {
       type: 1,
       name: "区块",
-      remark: "测试1",
+      remark: "面",
       pointData: [
         {
-          lon: 103.94,
-          lat: 30.75,
+          lon: 103.49,
+          lat: 31.24,
           name: "",
           remark: "",
           img: "",
         },
         {
-          lon: 104.03,
-          lat: 30.57,
+          lon: 103.15,
+          lat: 30.48,
           name: "",
           remark: "",
           img: "",
         },
         {
-          lon: 104.14,
-          lat: 30.57,
+          lon: 103.9,
+          lat: 30.33,
           name: "",
           remark: "",
           img: "",
@@ -57,32 +57,32 @@ const state = reactive({
     {
       type: 4,
       name: "管道",
-      remark: "测试2",
+      remark: "线",
       pointData: [
         {
-          lon: 104.07,
-          lat: 30.61,
+          lon: 103.53,
+          lat: 31.02,
           remark: "起点",
           name: "",
           img: "",
         },
         {
-          lon: 104.03,
-          lat: 30.59,
+          lon: 103.57,
+          lat: 31.03,
           name: "",
           remark: "",
           img: "",
         },
         {
-          lon: 104.01,
-          lat: 30.55,
+          lon: 103.61,
+          lat: 31.0,
           name: "",
           remark: "",
           img: "",
         },
         {
-          lon: 103.97,
-          lat: 30.5,
+          lon: 103.64,
+          lat: 30.95,
           remark: "终点",
           name: "",
           img: "",
@@ -92,7 +92,7 @@ const state = reactive({
     {
       type: 3,
       name: "点",
-      remark: "测试3",
+      remark: "点",
       pointData: [
         {
           lon: 104.07,
@@ -106,7 +106,7 @@ const state = reactive({
     {
       type: 5,
       name: "图片",
-      remark: "测试4",
+      remark: "图片",
       pointData: [
         {
           lon: 104.06,
@@ -124,7 +124,7 @@ const state = reactive({
 watch(
   () => state.data,
   (newVal, oldVal) => {
-    const jsonString = JSON.stringify(newVal);
+    const jsonString = JSON.stringify(newVal, null, 2);
     state.code = jsonString;
   },
   {
@@ -135,26 +135,19 @@ watch(
 
 const gisRef = ref<InstanceType<typeof DrawGis>>();
 const openGis = () => {
-  gisRef.value?.open(state.data);
+  gisRef.value?.open(JSON.parse(state.code));
 };
 </script>
 
 <style lang="scss" scoped>
 .gis-getdata {
   width: 100%;
-  // height: 100%;
-  .code {
-    min-height: 30vh;
-    width: 80%;
-    margin: 20px auto;
-  }
+  height: 100%;
 }
 .handle {
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100%;
   .el-button {
     margin-top: 20px;
   }
