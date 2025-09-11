@@ -173,6 +173,7 @@ const drawGis = (data: CesiumData[]) => {
       // 普通点
       drawPoint(position[0], {
         properties: item,
+        animate: true,
       });
     } else if (item.type === CesiumFilterType.Device) {
       // 图片点

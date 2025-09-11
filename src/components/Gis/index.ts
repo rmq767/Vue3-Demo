@@ -941,7 +941,6 @@ export const useDraw = (
 
     let entity: Cesium.Entity;
     if (config?.img) {
-      // config.animate && animatePoint(position, type, data?.wellType);
       entity = new Cesium.Entity({
         position: position,
         properties: config?.properties || {}, // 用来存信息
@@ -949,7 +948,7 @@ export const useDraw = (
           image: config.img,
           color: Cesium.Color.RED,
           heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-          ...(config.billboard || {}),
+          ...(config?.billboard || {}),
         },
         label: {
           font: "12px sans-serif",
@@ -964,11 +963,10 @@ export const useDraw = (
           ),
           scaleByDistance: new Cesium.NearFarScalar(100, 1.5, 10_0000, 0.8),
           heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-          ...(config.label || {}),
+          ...(config?.label || {}),
         },
       });
     } else {
-      // config.animate && animatePoint(position, type, data?.wellType);
       entity = new Cesium.Entity({
         position: position,
         properties: config?.properties || {}, // 用来存信息
@@ -996,6 +994,12 @@ export const useDraw = (
           ...(config?.label || {}),
         },
       });
+      if (config?.animate) {
+        viewer.value!.clock.shouldAnimate = true;
+        viewer.value?.clock.onTick.addEventListener(function (clock) {
+          animatePoint(entity, clock.currentTime);
+        });
+      }
     }
     // 单独的点直接添加到viewer中
     if (!isChildren) {
@@ -1251,4 +1255,26 @@ async function addCesiumTerrain(viewer: Cesium.Viewer) {
   viewer.scene.verticalExaggeration = 1;
   // 垂直地形夸张相对高度，默认值0
   viewer.scene.verticalExaggerationRelativeHeight = 0.1;
+}
+
+// 点动画变量
+let pointSizeDirection = 1;
+let pointPulseRate = 0.5;
+// 动画处理函数
+function animatePoint(pointEntity: Cesium.Entity, time: any) {
+  const pointGraphics = pointEntity.point;
+  const currentSize = pointGraphics?.pixelSize?.getValue(time);
+
+  // 改变点的大小
+  let newSize = currentSize + pointPulseRate * pointSizeDirection;
+
+  if (newSize > 20) {
+    newSize = 20;
+    pointSizeDirection = -0.1;
+  } else if (newSize < 10) {
+    newSize = 10;
+    pointSizeDirection = 0.1;
+  }
+
+  pointGraphics!.pixelSize = newSize;
 }
