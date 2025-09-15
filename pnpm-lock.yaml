@@ -17,6 +17,9 @@ importers:
       '@codemirror/lang-javascript':
         specifier: ^6.2.2
         version: 6.2.4
+      '@codemirror/lang-json':
+        specifier: ^6.0.2
+        version: 6.0.2
       '@codemirror/state':
         specifier: ^6.5.2
         version: 6.5.2
@@ -38,6 +41,9 @@ importers:
       '@turf/turf':
         specifier: ^7.1.0
         version: 7.2.0
+      ajv:
+        specifier: ^8.17.1
+        version: 8.17.1
       axios:
         specifier: ^1.7.9
         version: 1.11.0
@@ -385,6 +391,9 @@ packages:
 
   '@codemirror/lang-javascript@6.2.4':
     resolution: {integrity: sha512-0WVmhp1QOqZ4Rt6GlVGwKJN3KW7Xh4H2q8ZZNGZaP6lRdxXJzmjm4FqvmOojVj6khWJHIb9sp7U/72W7xQgqAA==}
+
+  '@codemirror/lang-json@6.0.2':
+    resolution: {integrity: sha512-x2OtO+AvwEHrEwR0FyyPtfDUiloG3rnVTSZV1W8UteaLL8/MajQd8DpvUb2YVzC+/T18aSDv0H9mu+xw0EStoQ==}
 
   '@codemirror/language@6.11.3':
     resolution: {integrity: sha512-9HBM2XnwDj7fnu0551HkGdrUrrqmYq/WC5iv6nbY2WdicXdGbhR/gfbZOH73Aqj4351alY1+aoG9rCNfiwS1RA==}
@@ -738,6 +747,9 @@ packages:
 
   '@lezer/javascript@1.5.1':
     resolution: {integrity: sha512-ATOImjeVJuvgm3JQ/bpo2Tmv55HSScE2MTPnKRMRIPx2cLhHGyX2VnqpHhtIV1tVzIjZDbcWQm+NCTF40ggZVw==}
+
+  '@lezer/json@1.0.3':
+    resolution: {integrity: sha512-BP9KzdF9Y35PDpv04r0VeSTKDeox5vVr3efE7eBbx3r4s3oNLfunchejZhjArmeieBH+nVOpgIiBJpEAv8ilqQ==}
 
   '@lezer/lr@1.4.2':
     resolution: {integrity: sha512-pu0K1jCIdnQ12aWNaAVU5bzi7Bd1w54J3ECgANPmYLtQKP0HBj2cE/5coBD66MT10xbtIuUr7tg0Shbsvk0mDA==}
@@ -1633,6 +1645,9 @@ packages:
     engines: {node: '>=0.4.0'}
     hasBin: true
 
+  ajv@8.17.1:
+    resolution: {integrity: sha512-B/gBuNg5SiMTrPkC+A2+cW0RszwxYmn6VYxB/inlBStS5nx6xHIt/ehKRhIMhqusl7a8LjQoZnjCs5vhwxOQ1g==}
+
   alien-signals@2.0.7:
     resolution: {integrity: sha512-wE7y3jmYeb0+h6mr5BOovuqhFv22O/MV9j5p0ndJsa7z1zJNPGQ4ph5pQk/kTTCWRC3xsA4SmtwmkzQO+7NCNg==}
 
@@ -1975,6 +1990,9 @@ packages:
     resolution: {integrity: sha512-7MptL8U0cqcFdzIzwOTHoilX9x5BrNqye7Z/LuC7kCMRio1EMSyqRK3BEAUD7sXRq4iT4AzTVuZdhgQ2TCvYLg==}
     engines: {node: '>=8.6.0'}
 
+  fast-uri@3.1.0:
+    resolution: {integrity: sha512-iPeeDKJSWf4IEOasVVrknXpaBV0IApz/gp7S2bb7Z4Lljbl2MGJRqInZiUrQwV16cpzw/D3S5j5Julj/gT52AA==}
+
   fastq@1.19.1:
     resolution: {integrity: sha512-GwLTyxkCXjXbxqIhTsMI2Nui8huMPtnxg7krajPJAjnEG/iiOS7i+zCtWGZR9G0NBKbXKh6X9m9UIsYX/N6vvQ==}
 
@@ -2160,6 +2178,9 @@ packages:
     resolution: {integrity: sha512-/sM3dO2FOzXjKQhJuo0Q173wf2KOo8t4I8vHy6lF9poUp7bKT0/NHE8fPX23PwfhnykfqnC2xRxOnVw5XuGIaA==}
     engines: {node: '>=6'}
     hasBin: true
+
+  json-schema-traverse@1.0.0:
+    resolution: {integrity: sha512-NM8/P9n3XjXhIZn1lLhkFaACTOURQXjWhV4BA/RnOv8xvgqtqpAX9IO4mRQxSx1Rlo4tqzeqb0sOlruaOy3dug==}
 
   json5@2.2.3:
     resolution: {integrity: sha512-XmOWe7eyHYH14cLdVPoyg+GOH3rYX++KpzrylJwSW98t3Nk+U8XOl8FWKOgwtzdb8lXGf6zYwDUzeHMWfxasyg==}
@@ -2472,6 +2493,10 @@ packages:
 
   regl@1.7.0:
     resolution: {integrity: sha512-bEAtp/qrtKucxXSJkD4ebopFZYP0q1+3Vb2WECWv/T8yQEgKxDxJ7ztO285tAMaYZVR6mM1GgI6CCn8FROtL1w==}
+
+  require-from-string@2.0.2:
+    resolution: {integrity: sha512-Xf0nWe6RseziFMu+Ap9biiUbmplq6S9/p+7w7YXP/JBHhrUDDUhwa+vANyubuqfZWTveU//DYVGsDG7RKL/vEw==}
+    engines: {node: '>=0.10.0'}
 
   resolve@1.22.10:
     resolution: {integrity: sha512-NPRy+/ncIMeDlTAsuqwKIiferiawhefFJtkNSW0qZJEqMEb+qBt/77B/jGeeek+F0uOeN05CDa6HXbbIgtVX4w==}
@@ -3224,6 +3249,11 @@ snapshots:
       '@lezer/common': 1.2.3
       '@lezer/javascript': 1.5.1
 
+  '@codemirror/lang-json@6.0.2':
+    dependencies:
+      '@codemirror/language': 6.11.3
+      '@lezer/json': 1.0.3
+
   '@codemirror/language@6.11.3':
     dependencies:
       '@codemirror/state': 6.5.2
@@ -3668,6 +3698,12 @@ snapshots:
       '@lezer/common': 1.2.3
 
   '@lezer/javascript@1.5.1':
+    dependencies:
+      '@lezer/common': 1.2.3
+      '@lezer/highlight': 1.2.1
+      '@lezer/lr': 1.4.2
+
+  '@lezer/json@1.0.3':
     dependencies:
       '@lezer/common': 1.2.3
       '@lezer/highlight': 1.2.1
@@ -5376,6 +5412,13 @@ snapshots:
 
   acorn@8.15.0: {}
 
+  ajv@8.17.1:
+    dependencies:
+      fast-deep-equal: 3.1.3
+      fast-uri: 3.1.0
+      json-schema-traverse: 1.0.0
+      require-from-string: 2.0.2
+
   alien-signals@2.0.7: {}
 
   anymatch@3.1.3:
@@ -5721,6 +5764,8 @@ snapshots:
       merge2: 1.4.1
       micromatch: 4.0.8
 
+  fast-uri@3.1.0: {}
+
   fastq@1.19.1:
     dependencies:
       reusify: 1.1.0
@@ -5888,6 +5933,8 @@ snapshots:
   jsep@1.4.0: {}
 
   jsesc@3.1.0: {}
+
+  json-schema-traverse@1.0.0: {}
 
   json5@2.2.3: {}
 
@@ -6185,6 +6232,8 @@ snapshots:
   readdirp@4.1.2: {}
 
   regl@1.7.0: {}
+
+  require-from-string@2.0.2: {}
 
   resolve@1.22.10:
     dependencies:
