@@ -9,12 +9,14 @@ export const useJsonSchema = () => {
     "type":"object",
     "properties":{
       "name":{
-        "type":"string"
+        "type":"string",
+        "pattern": "^J"
       },
       "age":{
-        "type":"number",
+        "type":"integer",
         "exclusiveMinimum":0,
-        "maximum":100
+        "maximum":100,
+        "multipleOf":10
       },
       "tags":{
         "type":"array",
@@ -24,6 +26,61 @@ export const useJsonSchema = () => {
         "uniqueItems":true,
         "minItems":1,
         "maxItems":10
+      },
+      "address":{
+        "type":"object",
+        "properties":{
+          "city":{
+            "const":"New York"
+          },
+          "street":{
+            "enum": ["Street", "Avenue", "Boulevard"]
+          }
+        },
+        "patternProperties": {
+          "^S_": { "type": "string" },
+          "^I_": { "type": "integer" }
+        },
+        "required":["city","street"]
+      },
+      "phone":{
+        "type": "array",
+        "items": [
+          { "type": "number" },
+          { "type": "string" },
+          { "enum": ["IOS", "Android"] },
+          { "enum": ["IPhone", "Samsung", "Huawei"] }
+        ],
+        "minItems": 1,
+        "maxItems": 4
+      },
+      "email":{
+        "allOf":[
+          {
+            "type":"string",
+            "maxLength":50
+          },
+          {
+            "pattern":"^[a-zA-Z0-9_-]+@[a-zA-Z0-9_-]+(\.[a-zA-Z0-9_-]+)+$"
+          }
+        ]
+      },
+      "email2":{
+        "anyOf": [
+          { "type": "string", "maxLength": 5 },
+          { "type": "number", "minimum": 0 }
+        ]
+      },
+      "email3":{
+        "oneOf": [
+          { "type": "number", "multipleOf": 5 },
+          { "type": "number", "multipleOf": 3 }
+        ]
+      },
+      "email4":{
+        "not": {
+          "type": "number"
+        }
       }
     },
     "required":["name","age"]
@@ -110,7 +167,18 @@ export const useJsonSchema = () => {
 export const useJsonString = () => {
   const jsonStr = ref(`{
     "name": "John",
-    "age": 30
+    "age": 30,
+    "tags": ["developer", "teacher", "musician"],
+    "address": {
+      "city": "New York",
+      "street":"Street",
+      "ID": 12345
+    },
+    "phone":[2,"phone","Android","IPhone"],
+    "email": "example@example.com",
+    "email2":"a@b.c",
+    "email3":6,
+    "email4":"test"
   }`);
   const view = shallowRef<EditorView>();
   const editorRef = ref<InstanceType<typeof HTMLDivElement>>();
