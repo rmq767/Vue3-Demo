@@ -55,7 +55,7 @@ watch(
   },
   {
     immediate: true,
-  }
+  },
 );
 /**
  * @description 条件名称
@@ -98,6 +98,8 @@ const changeCondition = (e: FocusEvent) => {
   const value = (e.target as HTMLInputElement).value;
   if (value) {
     props.lf?.changeEdgeType(props.data.id, "dashedLine");
+  } else {
+    props.lf?.changeEdgeType(props.data.id, "polyline");
   }
   props.lf?.setProperties(props.data.id, {
     condition: value,

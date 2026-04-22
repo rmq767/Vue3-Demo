@@ -49,7 +49,7 @@ export function registeNode(lf: ShallowRef<LogicFlow | undefined>) {
           alignmentBaseline: "middle",
           style: { fontSize: 12 },
         },
-        text.value
+        text.value,
       );
     }
   }
@@ -150,9 +150,9 @@ export function registeNode(lf: ShallowRef<LogicFlow | undefined>) {
                 color: "#fff",
               },
             },
-            text.value
+            text.value,
           ),
-        ]
+        ],
       );
     }
   }
@@ -239,9 +239,9 @@ export function registeNode(lf: ShallowRef<LogicFlow | undefined>) {
                 margin: "0",
               },
             },
-            text.value
+            text.value,
           ),
-        ]
+        ],
       );
     }
   }
@@ -250,7 +250,7 @@ export function registeNode(lf: ShallowRef<LogicFlow | undefined>) {
       this.width = 120;
       this.height = 50;
       this.radius = 4;
-      this.isSelected = false;
+      // this.isSelected = true;
     }
     getConnectedSourceRules() {
       const rules = super.getConnectedSourceRules();
@@ -328,9 +328,9 @@ export function registeNode(lf: ShallowRef<LogicFlow | undefined>) {
                 margin: "0",
               },
             },
-            text.value
+            text.value,
           ),
-        ]
+        ],
       );
     }
   }
@@ -339,7 +339,7 @@ export function registeNode(lf: ShallowRef<LogicFlow | undefined>) {
       this.width = 120;
       this.height = 50;
       this.radius = 4;
-      this.isSelected = false;
+      // this.isSelected = true;
     }
     getConnectedSourceRules() {
       const rules = super.getConnectedSourceRules();
@@ -417,9 +417,9 @@ export function registeNode(lf: ShallowRef<LogicFlow | undefined>) {
                 margin: "0",
               },
             },
-            text.value
+            text.value,
           ),
-        ]
+        ],
       );
     }
   }
@@ -428,7 +428,7 @@ export function registeNode(lf: ShallowRef<LogicFlow | undefined>) {
       this.width = 120;
       this.height = 50;
       this.radius = 4;
-      this.isSelected = false;
+      // this.isSelected = true;
     }
     getConnectedSourceRules() {
       const rules = super.getConnectedSourceRules();
@@ -547,7 +547,7 @@ export function registeNode(lf: ShallowRef<LogicFlow | undefined>) {
           alignmentBaseline: "middle",
           style: { fontSize: 12 },
         },
-        text.value
+        text.value,
       );
     }
   }
@@ -616,8 +616,9 @@ export function registeNode(lf: ShallowRef<LogicFlow | undefined>) {
 export function registerKeyboard(
   lf: ShallowRef<LogicFlow | undefined>,
   nodeData: Ref<LogicFlow.NodeData | LogicFlow.EdgeData | undefined>,
-  settingType: Ref<SettingType>
+  settingType: Ref<SettingType>,
 ) {
+  console.log(1);
   let copyNodes = undefined as LogicFlow.NodeData[] | undefined;
   let TRANSLATION_DISTANCE = 40;
   let CHILDREN_TRANSLATION_DISTANCE = 40;
@@ -636,7 +637,7 @@ export function registerKeyboard(
           (node) =>
             node.type === "start" ||
             node.type === "end" ||
-            node.type === "launch"
+            node.type === "launch",
         );
         if (startOrEndNode) {
           return true;
@@ -652,7 +653,7 @@ export function registerKeyboard(
           });
           let addElements = lf.value?.addElements(
             { nodes: copyNodes, edges: [] },
-            CHILDREN_TRANSLATION_DISTANCE
+            CHILDREN_TRANSLATION_DISTANCE,
           );
           if (!addElements) return true;
           // 选中复制的节点
@@ -667,7 +668,7 @@ export function registerKeyboard(
       },
     },
     {
-      keys: ["backspace"],
+      keys: ["backspace", "delete"],
       callback: () => {
         const elements = lf.value?.getSelectElements(true);
         if (elements) {
@@ -696,6 +697,71 @@ export function registerKeyboard(
   ];
   return cv;
 }
+/**
+ * @description 注册单独删除某条边
+ * @export
+ * @param {(ShallowRef<LogicFlow | undefined>)} lf
+ * @param {Ref<SettingType>} settingType
+ */
+export function addListenerdeleteEdge(
+  lf: ShallowRef<LogicFlow | undefined>,
+  settingType: Ref<SettingType>,
+) {
+  document.addEventListener("keydown", (e) =>
+    handleKeyDown(e, lf, settingType),
+  );
+}
+/**
+ * @description 取消监听单独删除某条边
+ * @export
+ * @param {(ShallowRef<LogicFlow | undefined>)} lf
+ * @param {Ref<SettingType>} settingType
+ */
+export function removeListenerdeleteEdge(
+  lf: ShallowRef<LogicFlow | undefined>,
+  settingType: Ref<SettingType>,
+) {
+  document.removeEventListener("keydown", (e) =>
+    handleKeyDown(e, lf, settingType),
+  );
+}
+
+// 使用原生键盘事件监听，确保能捕获所有按键
+const handleKeyDown = (
+  e: KeyboardEvent,
+  lf: ShallowRef<LogicFlow | undefined>,
+  settingType: Ref<SettingType>,
+) => {
+  if (e.key === "Backspace" || e.key === "Delete") {
+    console.log("当前选中的元素:", lf.value?.getSelectElements());
+
+    const elements = lf.value?.getSelectElements();
+    if (elements && (elements.edges.length > 0 || elements.nodes.length > 0)) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      elements.edges.forEach((edge) => {
+        console.log("删除边:", edge.id);
+        edge.id && lf.value?.deleteEdge(edge.id);
+      });
+
+      elements.nodes.forEach((node) => {
+        if (
+          node.type === "start" ||
+          node.type === "end" ||
+          node.type === "launch"
+        ) {
+          return;
+        }
+        console.log("删除节点:", node.id);
+        node.id && lf.value?.deleteNode(node.id);
+      });
+
+      settingType.value = "all";
+      lf.value?.clearSelectElements();
+    }
+  }
+};
 
 /**
  * @description 流程类型

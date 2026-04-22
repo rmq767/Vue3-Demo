@@ -26,9 +26,22 @@ export default { name: "LogicFlow" };
 import LogicFlow from "@logicflow/core";
 import "@logicflow/core/lib/style/index.css";
 import "@logicflow/extension/lib/style/index.css";
-import { onMounted, reactive, ref, ShallowRef, shallowRef } from "vue";
+import {
+  onMounted,
+  onUnmounted,
+  reactive,
+  ref,
+  ShallowRef,
+  shallowRef,
+} from "vue";
 import NodePanel from "./components/node-panel.vue";
-import { registeNode, registerKeyboard, requiredConfig } from "./index";
+import {
+  addListenerdeleteEdge,
+  registeNode,
+  registerKeyboard,
+  removeListenerdeleteEdge,
+  requiredConfig,
+} from "./index";
 import { ElMessage } from "element-plus";
 import Control from "./components/control.vue";
 import Setting from "./components/setting.vue";
@@ -75,11 +88,11 @@ const initEvent = (lf: ShallowRef<LogicFlow | undefined>) => {
     settingType.value = "all";
   });
   lf.value?.on("node:mousedown", ({ data }) => {
-    lf.value?.selectElementById(data.id, false);
+    lf.value?.selectElementById(data.id, true);
     getSettingInfo(data);
   });
   lf.value?.on("edge:click", ({ data }) => {
-    lf.value?.selectElementById(data.id, false);
+    lf.value?.selectElementById(data.id, true);
     getSettingInfo(data);
   });
   lf.value?.on("connection:not-allowed", (data) => {
@@ -113,14 +126,14 @@ const submit = () => {
       if (Array.isArray(properties[key])) {
         if (requiredConfig[key] && properties[key].length === 0) {
           return ElMessage.error(
-            `${data.text?.value}节点 ${requiredConfig[key]}`
+            `${data.text?.value}节点 ${requiredConfig[key]}`,
           );
         }
       } else {
         // 非数组配置项 判断是否为空
         if (requiredConfig[key] && !properties[key]) {
           return ElMessage.error(
-            `${data.text?.value}节点 ${requiredConfig[key]}`
+            `${data.text?.value}节点 ${requiredConfig[key]}`,
           );
         }
       }
@@ -138,9 +151,12 @@ onMounted(() => {
       shortcuts: registerKeyboard(lf, nodeData, settingType),
     },
     textEdit: false,
+    multipleSelectKey: "meta(cmd)、shift、alt",
+    stopScrollGraph: true,
   });
   registeNode(lf);
   initEvent(lf);
+  addListenerdeleteEdge(lf, settingType);
   lf.value.render({
     nodes: [
       {
@@ -196,15 +212,14 @@ onMounted(() => {
         sourceNodeId: "node_1",
         targetNodeId: "node_2",
       },
-      {
-        id: "edge_2",
-        type: "polyline",
-        sourceNodeId: "node_2",
-        targetNodeId: "node_3",
-      },
     ],
   });
   lf.value.translateCenter(); // 将图形移动到画布中央
+});
+
+onUnmounted(() => {
+  lf.value?.destroy();
+  removeListenerdeleteEdge(lf, settingType);
 });
 </script>
 
