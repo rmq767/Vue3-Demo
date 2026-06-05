@@ -88,10 +88,12 @@ const initEvent = (lf: ShallowRef<LogicFlow | undefined>) => {
     settingType.value = "all";
   });
   lf.value?.on("node:mousedown", ({ data }) => {
+    lf.value?.clearSelectElements();
     lf.value?.selectElementById(data.id, true);
     getSettingInfo(data);
   });
   lf.value?.on("edge:click", ({ data }) => {
+    lf.value?.clearSelectElements();
     lf.value?.selectElementById(data.id, true);
     getSettingInfo(data);
   });
@@ -151,7 +153,7 @@ onMounted(() => {
       shortcuts: registerKeyboard(lf, nodeData, settingType),
     },
     textEdit: false,
-    multipleSelectKey: "meta(cmd)、shift、alt",
+    // multipleSelectKey: "meta(cmd)、shift、alt",
     stopScrollGraph: true,
   });
   registeNode(lf);

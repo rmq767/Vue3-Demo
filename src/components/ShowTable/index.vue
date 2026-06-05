@@ -50,7 +50,7 @@
 </template>
 
 <script lang="ts" name="ShowTable" setup>
-import { ref, withDefaults } from "vue";
+import { ref } from "vue";
 import { TableColumn, DateTimeFormat } from "@/types/common";
 import { TableInstance } from "element-plus";
 
@@ -64,7 +64,7 @@ const props = withDefaults(
   {
     index: true,
     radio: false,
-  }
+  },
 );
 const tableRef = ref<TableInstance>();
 const colors = [
