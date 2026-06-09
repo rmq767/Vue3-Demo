@@ -120,7 +120,7 @@ const drag = () => {
     // 计算gridLayout.value中dropId的元素的新位置
     const newPos = item.calcXY(
       position.value.y - parentRect.top,
-      position.value.x - parentRect.left
+      position.value.x - parentRect.left,
     );
 
     // 如果鼠标在grid中，则触发gridLayout.value的dragstart事件
@@ -131,7 +131,7 @@ const drag = () => {
         newPos.x,
         newPos.y,
         dragItem.h,
-        dragItem.w
+        dragItem.w,
       );
       // 将dragItem的i、x和y设置为index、layout.value[index].x和layout.value[index].y
       dragItem.i = String(index);
@@ -145,7 +145,7 @@ const drag = () => {
         newPos.x,
         newPos.y,
         dragItem.h,
-        dragItem.w
+        dragItem.w,
       );
       // 从layout.value中移除i为dropId的元素
       layout.value = layout.value.filter((item) => item.i !== dropId);
@@ -177,7 +177,7 @@ function dragEnd(chart: any) {
       dragItem.x,
       dragItem.y,
       dragItem.h,
-      dragItem.w
+      dragItem.w,
     );
     layout.value = layout.value.filter((item) => item.i !== dropId);
   } else {
@@ -202,7 +202,7 @@ function dragEnd(chart: any) {
     dragItem.x,
     dragItem.y,
     dragItem.h,
-    dragItem.w
+    dragItem.w,
   );
 
   // 根据chart的id，将chart添加到charts中
@@ -250,7 +250,7 @@ const resized = (
   newH: number,
   newW: number,
   newHPx: number,
-  newWPx: number
+  newWPx: number,
 ) => {
   const chart = charts.value.get(i);
   chart.width = newWPx + "px";
@@ -296,10 +296,11 @@ const resized = (
   height: calc(100% - 5px);
   margin: 5px;
   content: "";
-  background-image: linear-gradient(to right, lightgrey 1px, transparent 1px),
+  background-image:
+    linear-gradient(to right, lightgrey 1px, transparent 1px),
     linear-gradient(to bottom, lightgrey 1px, transparent 1px);
   background-repeat: repeat;
-  background-size: calc(calc(100% - 5px) / 12) 40px;
+  background-size: calc((100% - 5px) / 8) 100px;
 }
 :deep(.vgl-layout) {
   min-height: 100%;

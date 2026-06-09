@@ -49,6 +49,7 @@
   "devDependencies": {
     "@types/echarts": "^4.9.22",
     "@types/leaflet": "^1.9.12",
+    "@types/markdown-it": "^14.1.2",
     "@types/node": "^20.10.6",
     "@types/three": "^0.161.2",
     "@vitejs/plugin-vue": "^4.5.2",
