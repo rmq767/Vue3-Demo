@@ -8,6 +8,8 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     CameraControl: typeof import('./src/components/Gis/components/cameraControl.vue')['default']
+    ChatInput: typeof import('./src/components/Chat/ChatInput.vue')['default']
+    ChatSession: typeof import('./src/components/Chat/ChatSession.vue')['default']
     Desc: typeof import('./src/components/Editor/components/desc.vue')['default']
     Dialog: typeof import('./src/components/Dialog/index.vue')['default']
     Draw: typeof import('./src/components/Gis/draw.vue')['default']
@@ -45,6 +47,8 @@ declare module 'vue' {
     FnEditor: typeof import('./src/components/FnEditor/index.vue')['default']
     FnPanel: typeof import('./src/components/FnEditor/components/fn-panel.vue')['default']
     HelloWorld: typeof import('./src/components/HelloWorld.vue')['default']
+    MarkdownRenderer: typeof import('./src/components/Chat/MarkdownRenderer.vue')['default']
+    MessageBubble: typeof import('./src/components/Chat/MessageBubble.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     ShowTable: typeof import('./src/components/ShowTable/index.vue')['default']

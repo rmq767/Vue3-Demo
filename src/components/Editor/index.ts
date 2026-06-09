@@ -16,7 +16,6 @@ import {
 } from "@codemirror/autocomplete";
 import { basicSetup } from "codemirror";
 import { ref, shallowRef } from "vue";
-import { SUM, IF } from "@formulajs/formulajs";
 
 /**
  * @description 插入tag
@@ -78,7 +77,7 @@ const placeholderTag = ViewPlugin.fromClass(
       // 调用placeholderMatcher.updateDeco方法，根据传入的update和当前的placeholders更新装饰集，并重新赋值给placeholders属性
       this.placeholders = placeholderTagMatcher.updateDeco(
         update,
-        this.placeholders
+        this.placeholders,
       );
     }
   },
@@ -92,7 +91,7 @@ const placeholderTag = ViewPlugin.fromClass(
         // 从view中获取当前插件的placeholders属性，如果不存在则返回Decoration.none
         return view.plugin(plugin)?.placeholders || Decoration.none;
       }),
-  }
+  },
 );
 /**
  * @description 插入公式
@@ -147,7 +146,7 @@ const placeholderFn = ViewPlugin.fromClass(
       // 调用placeholderMatcher.updateDeco方法，根据传入的update和当前的placeholders更新装饰集，并重新赋值给placeholders属性
       this.placeholders = placeholderFnMatcher.updateDeco(
         update,
-        this.placeholders
+        this.placeholders,
       );
     }
   },
@@ -161,7 +160,7 @@ const placeholderFn = ViewPlugin.fromClass(
         // 从view中获取当前插件的placeholders属性，如果不存在则返回Decoration.none
         return view.plugin(plugin)?.placeholders || Decoration.none;
       }),
-  }
+  },
 );
 
 // 背景样式
@@ -329,7 +328,7 @@ function insetCompletion(
   view: EditorView,
   completion: Completion,
   from: number,
-  to: number
+  to: number,
 ) {
   const content = `{{${completion.label}}}()`;
   const anchor = from + content.length - 1;
