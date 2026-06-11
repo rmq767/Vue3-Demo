@@ -1,7 +1,23 @@
 <template>
   <div :class="['message-bubble', message.role]">
-    <template v-for="(block, idx) in message.content" :key="idx">
-      <MarkdownRenderer v-if="block.type === 'text'" :content="block.text" />
+    <template
+      v-for="(block, idx) in message.content"
+      :key="`${block.type}-${idx}`"
+    >
+      <template v-if="block.type === 'text'">
+        <template
+          v-for="(seg, segIdx) in parseTextSegments(block.text)"
+          :key="segIdx"
+        >
+          <MarkdownRenderer v-if="seg.type === 'text'" :content="seg.content" />
+          <InteractiveSuggestions
+            v-else-if="seg.type === 'suggestion'"
+            :items="seg.items"
+            @quick-send="(v: string) => $emit('quickSend', v)"
+            @navigate="(v: string) => $emit('navigate', v)"
+          />
+        </template>
+      </template>
       <div v-else-if="block.type === 'image_url'" class="message-image">
         <img
           :src="block.image_url.url"
@@ -48,6 +64,12 @@
           </svg>
         </div>
       </div>
+      <!-- <InteractiveSuggestions
+        v-else-if="block.type === 'suggestion'"
+        :items="block.items"
+        @quick-send="(v: string) => $emit('quickSend', v)"
+        @navigate="(v: string) => $emit('navigate', v)"
+      /> -->
     </template>
   </div>
 </template>
@@ -56,13 +78,69 @@
 export default { name: "MessageBubble" };
 </script>
 <script lang="ts" setup>
-import type { ChatMessage, FileContent } from "@/types/chat";
+import type { ChatMessage, FileContent, SuggestionItem } from "@/types/chat";
 import MarkdownRenderer from "./MarkdownRenderer.vue";
+import InteractiveSuggestions from "./InteractiveSuggestions.vue";
 
 const props = defineProps<{ message: ChatMessage }>();
 
+const emit = defineEmits<{
+  quickSend: [value: string];
+  navigate: [value: string];
+}>();
+
+/**
+ * 从文本中解析 ```suggestions 代码块，返回交错的文本段和建议段
+ */
+function parseTextSegments(
+  text: string,
+): Array<
+  | { type: "text"; content: string }
+  | { type: "suggestion"; items: SuggestionItem[] }
+> {
+  const segments: Array<
+    | { type: "text"; content: string }
+    | { type: "suggestion"; items: SuggestionItem[] }
+  > = [];
+  const regex = /```suggestions\n([\s\S]*?)\n```/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(text)) !== null) {
+    // 前面的纯文本段
+    if (match.index > lastIndex) {
+      segments.push({
+        type: "text",
+        content: text.slice(lastIndex, match.index),
+      });
+    }
+    // suggestion 段
+    try {
+      const items: SuggestionItem[] = JSON.parse(match[1].trim());
+      segments.push({ type: "suggestion", items });
+    } catch {
+      // JSON 解析失败，当作普通文本
+      segments.push({ type: "text", content: match[0] });
+    }
+    lastIndex = match.index + match[0].length;
+  }
+
+  // 剩余的文本
+  if (lastIndex < text.length) {
+    segments.push({ type: "text", content: text.slice(lastIndex) });
+  }
+
+  return segments.length ? segments : [{ type: "text", content: text }];
+}
+
 function previewImage(url: string) {
-  window.open(url, "_blank");
+  const w = window.open("", "_blank");
+  if (w) {
+    w.document.write(
+      `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#1a1a1a}img{max-width:100vw;max-height:100vh;object-fit:contain;box-shadow:0 4px 24px rgba(0,0,0,0.3);border-radius:4px}</style></head><body><img src="${url}" /></body></html>`,
+    );
+    w.document.close();
+  }
 }
 
 function downloadFile(file: FileContent) {

@@ -24,9 +24,15 @@
               <DynamicScrollerItem
                 class="message-item"
                 :item="item"
+                :key="item.id"
                 :active="active"
               >
-                <MessageBubble :message="item" />
+                <MessageBubble
+                  :message="item"
+                  :key="item.id"
+                  @quick-send="handleSuggestionSend"
+                  @navigate="handleSuggestionNavigate"
+                />
               </DynamicScrollerItem>
             </template>
           </DynamicScroller>
@@ -56,12 +62,13 @@ import { onMounted } from "vue";
 import ChatInput from "@/components/Chat/ChatInput.vue";
 import { DynamicScroller, DynamicScrollerItem } from "vue-virtual-scroller";
 import "vue-virtual-scroller/dist/vue-virtual-scroller.css";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import ChatSession from "@/components/Chat/ChatSession.vue";
 import { useChatSessions, useChatStream } from "@/utils/chat-hooks";
 import type { ContentBlock } from "@/types/chat";
 
 const route = useRoute();
+const router = useRouter();
 
 const {
   sessions,
@@ -109,6 +116,24 @@ const handleClose = () => {
 const handleClearSession = () => {
   clearSession();
   clearMessages();
+};
+
+// ─── 建议按钮点击处理 ────────────────────────────
+
+/** 点击 "send" 类型建议：自动发送一条新消息 */
+const handleSuggestionSend = (value: string) => {
+  if (!activeSessionId.value) {
+    createSession(value).then(() => {
+      sendMessage([{ type: "text", text: value }]);
+    });
+  } else {
+    sendMessage([{ type: "text", text: value }]);
+  }
+};
+
+/** 点击 "navigate" 类型建议：跳转到指定路由 */
+const handleSuggestionNavigate = (value: string) => {
+  router.push(value);
 };
 
 // ─── 初始化 ─────────────────────────────────────────────

@@ -42,11 +42,11 @@ export const useCesium = (el: string) => {
       // 点击选中元素
       selectionIndicator: false,
 
-      // baseLayer: new Cesium.ImageryLayer(
-      //   new Cesium.UrlTemplateImageryProvider({
-      //     url: "https://webst02.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}",
-      //   })
-      // ),
+      baseLayer: new Cesium.ImageryLayer(
+        new Cesium.UrlTemplateImageryProvider({
+          url: "https://webst02.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}",
+        }),
+      ),
     });
     // 去除版权样式
     (viewer.value.cesiumWidget.creditContainer as HTMLElement).style.display =
@@ -112,7 +112,7 @@ export const useCesium = (el: string) => {
 
   onMounted(() => {
     init();
-    initFly();
+    // initFly();
   });
   onUnmounted(() => {
     viewer.value!.destroy();
@@ -202,7 +202,7 @@ export const useCesium = (el: string) => {
           material: Cesium.Color.WHITE.withAlpha(0),
           plane: new Cesium.CallbackProperty(
             createPlaneUpdateFunction(plane),
-            false
+            false,
           ),
           // outline: true,
           // outlineColor: Cesium.Color.WHITE,
@@ -222,7 +222,7 @@ export const useCesium = (el: string) => {
     const stop = Cesium.JulianDate.addSeconds(
       start,
       duration,
-      new Cesium.JulianDate()
+      new Cesium.JulianDate(),
     );
 
     // Make sure viewer is at the desired time.
@@ -262,12 +262,12 @@ export const useCesium = (el: string) => {
     const firstTangent = Cesium.Cartesian3.subtract(
       points[0],
       before,
-      new Cesium.Cartesian3()
+      new Cesium.Cartesian3(),
     );
     const lastTangent = Cesium.Cartesian3.subtract(
       after,
       points[8],
-      new Cesium.Cartesian3()
+      new Cesium.Cartesian3(),
     );
 
     // Create the position spline.
@@ -281,7 +281,7 @@ export const useCesium = (el: string) => {
     // Create the callback position property and make it return spline evaluations.
     const position = new Cesium.CallbackPositionProperty(function (
       time,
-      result
+      result,
     ) {
       const splineTime =
         (delta * Cesium.JulianDate.secondsDifference(time!, start)) / duration;
@@ -289,8 +289,7 @@ export const useCesium = (el: string) => {
         return undefined;
       }
       return positionSpline.evaluate(splineTime, result);
-    },
-    false);
+    }, false);
 
     const orientation = new Cesium.VelocityOrientationProperty(position);
 
@@ -388,7 +387,7 @@ function addSCRegion(viewer: Cesium.Viewer) {
 
   const areas = new Cesium.ClippingPolygon({
     positions: Cesium.Cartesian3.fromDegreesArray(
-      simplified.geometry.coordinates[0].flat()
+      simplified.geometry.coordinates[0].flat(),
     ),
   });
   viewer.scene.globe.clippingPolygons = new Cesium.ClippingPolygonCollection({

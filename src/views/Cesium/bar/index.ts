@@ -97,6 +97,11 @@ export const useCesium = (el: string) => {
       sceneMode: Cesium.SceneMode.SCENE3D,
       // 点击选中元素
       selectionIndicator: false,
+      baseLayer: new Cesium.ImageryLayer(
+        new Cesium.UrlTemplateImageryProvider({
+          url: "https://webst02.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}",
+        }),
+      ),
     });
     // 去除版权样式
     (viewer.value.cesiumWidget.creditContainer as HTMLElement).style.display =
@@ -132,7 +137,7 @@ export const useCesium = (el: string) => {
             const item = entity.properties as any;
             const label = entityCollection.getById("label" + item.name);
             label!.label!.fillColor = new Cesium.ConstantProperty(
-              Cesium.Color.WHITE
+              Cesium.Color.WHITE,
             );
           }
           // hover到新的entity上，给新的entity添加label
@@ -142,7 +147,7 @@ export const useCesium = (el: string) => {
           const item = entity.properties as any;
           const label = entityCollection.getById("label" + item.name);
           label!.label!.fillColor = new Cesium.ConstantProperty(
-            Cesium.Color.PINK
+            Cesium.Color.PINK,
           );
           viewer.value?.scene.requestRender();
         } else {
@@ -153,13 +158,13 @@ export const useCesium = (el: string) => {
             const item = entity.properties as any;
             const label = entityCollection.getById("label" + item.name);
             label!.label!.fillColor = new Cesium.ConstantProperty(
-              Cesium.Color.WHITE
+              Cesium.Color.WHITE,
             );
           }
           viewer.value?.scene.requestRender();
         }
       },
-      Cesium.ScreenSpaceEventType.MOUSE_MOVE
+      Cesium.ScreenSpaceEventType.MOUSE_MOVE,
     );
   };
   /**
@@ -244,7 +249,7 @@ export const useCesium = (el: string) => {
           viewer.value?.scene.requestRender();
         }, 100);
       },
-      Cesium.ScreenSpaceEventType.LEFT_CLICK
+      Cesium.ScreenSpaceEventType.LEFT_CLICK,
     );
   };
 
@@ -271,7 +276,7 @@ export const useCesium = (el: string) => {
     const boxPosition = Cesium.Cartesian3.fromDegrees(
       item.position[0],
       item.position[1],
-      0
+      0,
     );
     let material = Cesium.Color.BLUE.withAlpha(0.8);
     if (item.value >= 200) {
@@ -298,7 +303,7 @@ export const useCesium = (el: string) => {
     const labelPosition = Cesium.Cartesian3.fromDegrees(
       item.position[0],
       item.position[1],
-      item.value * 1000 + 5000
+      item.value * 1000 + 5000,
     );
     const label = new Cesium.Entity({
       id: "label" + item.name,
@@ -319,7 +324,7 @@ export const useCesium = (el: string) => {
     const valuePosition = Cesium.Cartesian3.fromDegrees(
       item.position[0],
       item.position[1],
-      item.value * 1000 + 5000
+      item.value * 1000 + 5000,
     );
     const value = new Cesium.Entity({
       id: "value" + item.name,
@@ -357,7 +362,7 @@ export const useCesium = (el: string) => {
     // 经纬度坐标转换为笛卡尔坐标，加了高度
     let p2 = getCartesian3FromDegrees(
       p1!,
-      entity.properties?.value.getValue() * 1000 * 0.9
+      entity.properties?.value.getValue() * 1000 * 0.9,
     ); // 高度在0.9倍位置
     // 将笛卡尔坐标转换为屏幕坐标
     const p = getScreenPositionFromCartesian3(p2!, viewer.value!);
@@ -394,7 +399,7 @@ function addSCRegion(viewer: Cesium.Viewer) {
   // 根据简化后的几何体创建裁剪区域
   const areas = new Cesium.ClippingPolygon({
     positions: Cesium.Cartesian3.fromDegreesArray(
-      simplified.geometry.coordinates[0].flat()
+      simplified.geometry.coordinates[0].flat(),
     ),
   });
   // 设置裁剪区域
@@ -423,10 +428,10 @@ function addSCRegion(viewer: Cesium.Viewer) {
 export const getDegreesFromCartesian3 = (cartesian: Cesium.Cartesian3) => {
   const cartographic = Cesium.Cartographic.fromCartesian(cartesian);
   const longitude = Number(
-    Cesium.Math.toDegrees(cartographic.longitude).toFixed(6)
+    Cesium.Math.toDegrees(cartographic.longitude).toFixed(6),
   );
   const latitude = Number(
-    Cesium.Math.toDegrees(cartographic.latitude).toFixed(6)
+    Cesium.Math.toDegrees(cartographic.latitude).toFixed(6),
   );
   return [longitude, latitude];
 };
@@ -439,12 +444,12 @@ export const getDegreesFromCartesian3 = (cartesian: Cesium.Cartesian3) => {
  */
 export const getCartesian3FromDegrees = (
   degrees: number[],
-  height?: number
+  height?: number,
 ) => {
   const cartesian = Cesium.Cartesian3.fromDegrees(
     degrees[0],
     degrees[1],
-    height
+    height,
   );
   return cartesian;
 };
@@ -455,12 +460,12 @@ export const getCartesian3FromDegrees = (
  * @return {*}
  */
 export const getCartes3FromCartographic = (
-  cartographic: Cesium.Cartographic
+  cartographic: Cesium.Cartographic,
 ) => {
   const cartesian3 = Cesium.Cartesian3.fromDegrees(
     cartographic.longitude,
     cartographic.latitude,
-    cartographic.height
+    cartographic.height,
   );
   return cartesian3;
 };
@@ -473,11 +478,11 @@ export const getCartes3FromCartographic = (
  */
 export const getScreenPositionFromCartesian3 = (
   position: Cesium.Cartesian3,
-  viewer: Cesium.Viewer
+  viewer: Cesium.Viewer,
 ) => {
   const screenPosition = Cesium.SceneTransforms.worldToWindowCoordinates(
     viewer.scene,
-    position
+    position,
   );
   return screenPosition;
 };

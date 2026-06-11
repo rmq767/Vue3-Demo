@@ -44,7 +44,9 @@
     "uuid": "^11.0.2",
     "vue": "^3.3.11",
     "vue-router": "4",
-    "vue-virtual-scroller": "^3.0.4"
+    "vue-virtual-scroller": "^3.0.4",
+    "vxe-pc-ui": "^4.14.34",
+    "vxe-table": "^4.19.11"
   },
   "devDependencies": {
     "@types/echarts": "^4.9.22",

@@ -33,12 +33,31 @@ export interface FileContent {
   file_size: number; // 文件大小（字节）
 }
 
+// 建议项：模型返回的可点击推荐
+// action: "send" → 点击自动发送 value 对话
+//         "navigate" → 点击跳转到 value 路由
+//         "command" → 点击执行 value 命令
+//         "copy"   → 点击复制 value 到剪贴板
+export interface SuggestionItem {
+  label: string;
+  action: "send" | "navigate" | "command" | "copy";
+  value: string;
+  icon?: string;
+}
+
+// 建议内容块
+export interface SuggestionContent {
+  type: "suggestion";
+  items: SuggestionItem[];
+}
+
 // 联合类型：一条消息可包含多种内容
 export type ContentBlock =
   | TextContent
   | ImageContent
   | AudioContent
-  | FileContent;
+  | FileContent
+  | SuggestionContent;
 
 // 消息实体
 export interface ChatMessage {

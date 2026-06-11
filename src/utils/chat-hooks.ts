@@ -218,6 +218,7 @@ export function useChatSessions() {
   /** 选中已有会话 */
   function selectSession(id: string) {
     activeSessionId.value = id;
+    router.replace({ query: { id } });
   }
 
   /** 清空当前会话（新建对话时） */
@@ -289,31 +290,14 @@ export function useChatStream(activeSessionId: Ref<string>) {
         };
       }
 
-      // 文本文件 -> 解码 base64 后直接发送文本内容
-      if (f.mime_type.startsWith("text/")) {
-        try {
-          const base64Data = f.file_data.includes("base64,")
-            ? f.file_data.split("base64,")[1]
-            : f.file_data;
-          const decoded = atob(base64Data);
-          return {
-            type: "text" as const,
-            text: `[文件内容] ${f.filename}:\n\`\`\`\n${decoded}\n\`\`\``,
-          };
-        } catch {
-          // 解码失败则回退为带文件信息的文本
-          return {
-            type: "text" as const,
-            text: `[文件] ${f.filename} (${f.mime_type}, ${formatFileSize(f.file_size)})`,
-          };
-        }
-      }
-
       // 其他文件类型（PDF / Word / Excel 等）：
       // 将 base64 数据附在文本中，后端或模型可自行解析
       return {
-        type: "text" as const,
-        text: `[文件] ${f.filename} (${f.mime_type}, ${formatFileSize(f.file_size)})\n数据: ${f.file_data}`,
+        type: "file" as const,
+        filename: f.filename,
+        file_size: f.file_size,
+        file_url: f.file_data,
+        text: `[${f.filename}] (${f.mime_type}, ${formatFileSize(f.file_size)})\n数据: ${f.file_data}`,
       };
     });
   }
@@ -327,6 +311,27 @@ export function useChatStream(activeSessionId: Ref<string>) {
   /** 发送多模态消息并处理流式响应 */
   async function sendMessage(content: ContentBlock[]) {
     if (!activeSessionId.value) return;
+
+    // 构建历史消息（当前消息之前所有已完成的对话）
+    const historyMessages = messageList.value
+      .filter(
+        (m) =>
+          m.status === "done" && (m.role === "user" || m.role === "assistant"),
+      )
+      .map((m) => ({
+        role: m.role,
+        hidden: true,
+        content:
+          m.role === "user"
+            ? adaptToAPIFormat(m.content)
+            : m.content
+                .filter((b) => b.type === "text") // assistant 只保留文本，去掉 UI 用的建议块
+                .map((b) => ({
+                  type: "text",
+                  text: (b as { text: string }).text,
+                })),
+        id: m.id,
+      }));
 
     const msg: ChatMessage = {
       content, // 保留原始 ContentBlock（含 FileContent）用于前端展示
@@ -349,18 +354,20 @@ export function useChatStream(activeSessionId: Ref<string>) {
     const apiContent = adaptToAPIFormat(content);
     // 只发送 role + content，去掉 id/timestamp/status 等额外字段
     const apiMessages = [
+      ...historyMessages,
       {
         role: "user" as const,
         content: apiContent,
         id: msg.id,
       },
     ];
+
     abortController = new AbortController();
     sendChatMessage(
       {
         messages: apiMessages,
         sessionId: activeSessionId.value,
-        model: "deepseek",
+        model: "mimo",
       },
       abortController.signal,
       {
@@ -384,7 +391,7 @@ export function useChatStream(activeSessionId: Ref<string>) {
           }
           if (event.data.includes("sessionId") || event.data === "[DONE]") {
             isStreaming.value = false;
-            // 流结束，确保滚动到底部
+            // 确保滚动到底部
             scrollToBottom(scrollerRef, messageList.value);
             return;
           }

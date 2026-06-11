@@ -8,11 +8,18 @@ import "virtual:uno.css";
 import "leaflet/dist/leaflet.css";
 // 弹窗
 import MyDialog from "@/components/Dialog/index.vue";
+// vxe-table
+import VxeUITable from "vxe-pc-ui";
+import "vxe-pc-ui/lib/style.css";
+import "vxe-table/lib/style.css";
 
 const app = createApp(App);
 
 app.component("MyDialog", MyDialog);
 
-app.use(ElementPlus, { size: "default", zIndex: 3000 }).use(router);
+app
+  .use(ElementPlus, { size: "default", zIndex: 3000 })
+  .use(router)
+  .use(VxeUITable);
 
 app.mount("#app");

@@ -35,3 +35,33 @@ export interface Option {
   label: string;
   value: string;
 }
+
+export interface Pagination {
+  pageNum: number;
+  pageSize: number;
+}
+
+// ─── SearchFilter 筛选项配置 ─────────────────────────────────
+export interface FilterItem {
+  type: "input" | "select" | "date-picker" | "date-range" | "slot";
+  label: string;
+  prop: string;
+  placeholder?: string;
+  span?: number;
+  options?: { label: string; value: any }[];
+  pickerType?: "year" | "month" | "date";
+  slot?: string;
+}
+
+// ─── VxeTable 列配置 ───────────────────────────────────────────
+export interface VxeColumn {
+  field: string;
+  title: string;
+  width?: number | string;
+  minWidth?: number | string;
+  fixed?: "left" | "right";
+  align?: "left" | "center" | "right";
+  slot?: boolean;
+  visible?: boolean;
+  [key: string]: any;
+}
