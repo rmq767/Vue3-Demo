@@ -264,6 +264,7 @@ export function useChatStream(activeSessionId: Ref<string>) {
     try {
       const res = await getSessionDetail(id);
       messageList.value = res.data.session.messages;
+      console.log(messageList.value);
     } finally {
       messagesLoading.value = false;
     }
@@ -367,7 +368,7 @@ export function useChatStream(activeSessionId: Ref<string>) {
       {
         messages: apiMessages,
         sessionId: activeSessionId.value,
-        model: "mimo",
+        model: "deepseek",
       },
       abortController.signal,
       {
@@ -397,6 +398,7 @@ export function useChatStream(activeSessionId: Ref<string>) {
           }
           try {
             const result = JSON.parse(event.data);
+            console.log(result);
             if (result.token) {
               const lastMsg = messageList.value[messageList.value.length - 1];
               if (lastMsg.role !== "assistant") return;
