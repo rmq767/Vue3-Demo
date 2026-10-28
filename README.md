@@ -76,12 +76,16 @@
 
 | 路由 | 说明 |
 |:--|:--|
-| `/Three/demo` | Three.js 基础入门（场景、相机、几何体、GUI 控制） |
-| `/Three/event` | 事件交互（Raycaster 射线点击、TWEEN 补间动画） |
-| `/Three/texture` | 纹理贴图与材质（GLTF 加载、EXR 环境贴图、线框） |
-| `/Three/spotlight` | 聚光灯与阴影效果 |
-| `/Three/stratum` | 三维地层模型 + 深度坐标轴 + 井轨迹管道 |
-| `/Three/well` | **复杂钻井场景**（多层地层、井轨迹生长动画、相机跟随、信息浮窗、地形起伏、裁剪、钻井装置） |
+| `/Three/geology` | **程序化地质体**：fBm 噪声地形 + 9 套岩心层组 + 井眼轨迹 + 可拖剖切面，配实时渲染指标 HUD |
+
+- 页面位于 `src/views/Three/geology.vue`，引擎与内容拆在 `geology/core/`：`stage`（渲染循环、resize、DPR 封顶、后处理、统一回收）、`terrain`（高程场）、`geology`（层组 / 井眼 / 站库）、`picking`、`tokens`、`random`。
+- 全部内容由代码生成，**不加载任何外部模型或贴图**；旧 demo 依赖的 185MB glTF / EXR 资源已随页面一并删除。地形高程是解析函数，台站落位、井口高程与拾取读数取到的永远是同一个值。
+- 剖切用材质级 `clippingPlanes` 而非全局裁剪，井眼因此可以豁免——岩体被切开后仍能看到完整轨迹。射线不识别裁剪面，被切掉的部分照样能命中，所以拾取时按裁剪面过滤掉这类假命中。
+- 默认按需出图：只有交互、动画和控件变更置脏后才 `render`，HUD 里「刷新」与「出图」两条计数会分叉，静止时出图归零。指标直读 `renderer.info`，并关掉 `autoReset`，否则后处理一帧内多次 render 只会统计到最后一个 pass。
+- 交互：左键拖动旋转、滚轮缩放、单击选中（含 `InstancedMesh` 的 `instanceId`）、`F` 聚焦选中点、`Esc` 取消选中。
+- 缩放是**自实现的阻尼 dolly**（`stage.ts` 里 `enableZoom = false` + `stepZoom`）：OrbitControls 的 `enableDamping` 只作用于旋转和平移，`handleMouseWheel` 会立刻 `update()` 把 `scale` 消费掉，原生滚轮是一格一跳。现在按帧收敛半径、并以光标射线上的点为锚位同步 `target`，距离钳制在 190–720 m（块体对角半径约 165 m，钻不进岩体也拉不到看不见）。
+- 按需出图的置脏信号**必须听 `controls` 的 `change` 事件**，不能靠 `controls.update()` 的返回值：滚轮时 OrbitControls 内部已经 update 过一次，rAF 里再调就返回 `false`，那一帧不会重绘。
+- 场景不加雾：块体对角半径约 165 m，任何按距离衰减的雾都会在拉远时把整块岩体洗成背景色，看起来像「缩放后模型消失」。
 
 ---
 
