@@ -194,7 +194,7 @@ Aurora Field 是 `/GisPro` 页面独有的设计系统，服务于“地面油�
 
 **来源与置信度**：项目此前没有 `DESIGN.md`、Figma Variables、Tailwind theme 或 Storybook。`src/style.scss` 只有基础 reset；`src/components/GisMap/styles/gis.scss` 是旧大屏的局部青/薄荷 token，已按用户要求**不复用**。本文件是为 `/GisPro` 新建的页面级契约，token 属于 design decision，不是从证据中反推的既有规范。
 
-**适用范围**：仅 `/GisPro`。不修改 Element Plus 全局主题、旧 `/Gis` 页面或管理端组件。
+**适用范围**：仅 `/GisPro`。不修改 Element Plus 全局主题、`/Cesium/Gis` 演示页或管理端组件。
 
 ## Colors
 

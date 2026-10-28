@@ -1,9 +1,9 @@
 
 # Vue3-Demo
 
-> 基于 **Vue 3 + TypeScript + Vite** 的技术演示合集，涵盖三维地图、三维渲染、二维地图、动画、流程图、甘特图、规则引擎等多种前端技术。
+> 基于 **Vue 3 + TypeScript + Vite** 的技术演示合集，涵盖三维地图、三维渲染、二维地图、动画、流程图等多种前端技术。
 >
-> 路由根据 `views/` 目录结构**自动生成**，例如 `views/Cesium/bar/index.vue` 对应路由 `/Cesium/bar/index`
+> 路由根据 `views/` 目录结构**自动生成**，例如 `views/Cesium/Gis/index.vue` 对应路由 `/Cesium/Gis/index`
 
 ## 技术栈
 
@@ -15,12 +15,11 @@
 | 三维地图 | Cesium | ^1.132.0 |
 | 三维绘图 | Three.js | ^0.161.0 |
 | 二维地图 | Leaflet | ^1.9.4 |
-| Canvas 2D | Leafer UI | ^1.0.10 |
+| Canvas 2D | Leafer UI | ^2.3.2 |
 | 动画 | GSAP + ScrollTrigger | ^3.12.5 |
 | 流程图 | LogicFlow + 扩展 | ^2.0.6 |
-| 甘特图 | dhtmlx-gantt | ^8.0.6 |
 | 代码编辑器 | CodeMirror 6 | ^6.0.1 |
-| 拖拽布局 | grid-layout-plus | ^1.0.5 |
+| 拖拽布局 | gridstack.js | 14.0.0 |
 | 图表 | ECharts | ^5.5.1 |
 | 图可视化 | @antv/g6 | ^4.8.24 |
 | 地理分析 | @turf/turf | ^7.1.0 |
@@ -43,9 +42,9 @@
 
 | 路由 | 说明 |
 |:--|:--|
-| `/Gis/index` | 深色科技风气田 GIS：区块 / 井 / 平台 / 管道图层，搜索定位、点击详情、井轨迹地下透视、距离测量、二三维切换、双底图与实时告警模拟 |
+| `/Cesium/Gis/index` | 深色科技风气田 GIS：区块 / 井 / 平台 / 管道图层，搜索定位、点击详情、井轨迹地下透视、距离测量、二三维切换、双底图与实时告警模拟 |
 
-- 数据为确定性前端 mock（`src/components/GisMap/data/field.ts`），页面与子组件位于 `src/components/GisMap`，不影响既有 `Cesium/*` 演示页。
+- 页面位于 `src/views/Cesium/Gis/index.vue`，数据与子组件位于 `src/components/GisMap`，作为 Cesium 综合演示页。
 - 底图为高德矢量（暗化）与卫星影像，可随时切换；井轨迹、实时模拟均为演示能力，后续可在数据层替换为真实接口。
 
 ### 极光油田数字孪生大屏
@@ -64,17 +63,11 @@
 
 | 路由 | 说明 |
 |:--|:--|
-| `/Cesium/index` | 基础 Cesium 场景 |
-| `/Cesium/control` | 相机控制 |
 | `/Cesium/getData` | 画点线面（在线标记） |
 | `/Cesium/drawData` | 画点线面（在线渲染） |
-| `/Cesium/bar/index` | 部分区域展示柱状图效果 |
-| `/Cesium/czml/index` | CZML 轨迹跟踪 |
-| `/Cesium/fly/index` | 飞行漫游 |
-| `/Cesium/gpx/index` | GPX 轨迹展示 |
+| `/Cesium/Gis/index` | 气田三维 GIS 综合演示（图层、搜索、测量、井轨迹、二三维切换） |
 
 * [Vue3中使用cesium](https://blog.csdn.net/qq_44775782/article/details/138565105)
-* [Cesium柱状图效果](https://blog.csdn.net/qq_44775782/article/details/151116045)
 * [在线浏览](https://rmq767.github.io/Vue3-Demo/#/cesium/getData)
 
 ---
@@ -92,16 +85,28 @@
 
 ---
 
-### 🗺️ Leaflet + Leafer 井轨迹展示
+### 🗺️ Leaflet 二维 GIS
 
 | 路由 | 说明 |
 |:--|:--|
-| `/Leafer/leafer1/index` | 直井 + 地层连接（切面图） |
-| `/Leafer/leafer2/index` | 画单井轨迹 |
-| `/Leafer/leafer3/index` | 选择井进行井轨迹展示 |
-| `/Leaflet/index` | Leaflet 二维地图基础 |
+| `/Leaflet/index` | **极光油田二维 GIS**：4 套底图（GCJ02/WGS84 自动对齐）、区块 / 井 / 站库 / 管线图层、标签分级防碰撞、搜索、详情、双击井进入 2D 井轨迹剖面 |
 
-* [Leaflet+Leafer实现地层、井轨迹的切面图展示](https://blog.csdn.net/qq_44775782/article/details/144561037)
+- 页面位于 `src/views/Leaflet`，坐标、底图、图层与 HUD 逻辑拆在 `geo.ts`、`baseMaps.ts`、`fieldLayers.ts`、`useLeafletField.ts` 和 `components/`。
+- 数据复用 `src/components/GisPro/data/field.ts` 的固定种子 mock，区块 / 井 / 站库 / 管线数量均从 field 推导，不写死文案。
+- 底图包含高德矢量（暗化）、高德影像 + 注记、OSM、Esri World Imagery；高德为 GCJ02，OSM/Esri 为 WGS84，切换时覆盖物自动重投影并保持视野中心。天地图需自备 tk，未纳入首版。
+- 交互：`/` 聚焦搜索、图层开关、标签按缩放分级、悬停提示、单击详情、双击井进入 2D 井轨迹 / 地层剖面、`Esc` 逐级退出。在线瓦片不可达时自动落本地网格底图，状态栏标注 `本地网格`。
+
+---
+
+### ✏️ Leafer Canvas 2D 井场组态
+
+| 路由 | 说明 |
+|:--|:--|
+| `/Leafer/index` | **井场集输管网组态图**：设备/管线点选、拖拽重排与正交管线自动重连、鼠标中心缩放、参数编辑、流动动画与整图 PNG 导出 |
+
+- 页面位于 `src/views/Leafer/index.vue`，绘制逻辑在 `theme / routing / scene / camera / interaction / export-png` 模块，仅使用 `leafer-ui`，不依赖 Leaflet/Cesium。
+- 设备与管线为固定种子 mock（10 个设备 / 9 条管线），用于交互演示，非施工图。
+- 键盘：`F` 适应画布、`+ / -` 缩放、`Esc` 取消选择；按住空格或拖拽空白处平移。
 
 ---
 
@@ -109,7 +114,6 @@
 
 | 路由 | 说明 |
 |:--|:--|
-| `/Gantt/index` | dhtmlx-gantt 甘特图（多层嵌套、进度条、实际工期、截图导出） |
 | `/Logicflow/index` | LogicFlow 流程图（节点配置：动作设置、边界设置、审批设置、开始流程） |
 
 * [Vue3实现LogicFlow流程图](https://blog.csdn.net/qq_44775782/article/details/143598096)
@@ -120,8 +124,7 @@
 
 | 路由 | 说明 |
 |:--|:--|
-| `/GSAP/index` | GSAP 基础动画（fromTo、时间线 Timeline、Stagger 网格动画） |
-| `/GSAP/scroll` | ScrollTrigger 滚动驱动动画 |
+| `/GSAP/scroll-cinematic` | 电影感滚动叙事：星尘画布、固定光球、引力轨道、横向章节与圆形黎明揭示 |
 
 ---
 
@@ -138,19 +141,11 @@
 
 ---
 
-### 🔗 规则引擎
-
-| 路由 | 说明 |
-|:--|:--|
-| `/RuleLinkage/index` | **规则联动**：配置条件-动作规则，实时联动数据表（支持输入、数字、选择、日期等类型） |
-
----
-
 ### 🧩 布局 & UI
 
 | 路由 | 说明 |
 |:--|:--|
-| `/DragLayout/index` | 拖拽网格布局（grid-layout-plus） |
+| `/DragLayout/index` | 拖拽网格布局（gridstack.js，支持持久化/属性面板） |
 
 ---
 

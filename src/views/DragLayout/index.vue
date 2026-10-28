@@ -1,42 +1,53 @@
 <template>
-  <div class="drag-layout">
-    <div class="left-container">
-      <Left @drag="drag" @dragEnd="dragEnd" />
-    </div>
-    <div ref="wrapper" class="main-container">
-      <GridLayout
-        ref="gridLayout"
-        v-model:layout="layout"
-        :col-num="8"
-        :row-height="100"
-        :is-bounded="true"
-        :auto-size="true"
-      >
-        <GridItem
-          v-for="item in layout"
-          :key="item.i"
-          :x="item.x"
-          :y="item.y"
-          :w="item.w"
-          :h="item.h"
-          :i="item.i"
-          @resized="resized"
+  <div ref="rootEl" class="drag-layout">
+    <aside class="left-container">
+      <Left @add="addCard" />
+    </aside>
+
+    <main class="main-container">
+      <div class="canvas-toolbar">
+        <span class="canvas-title">拖拽布局</span>
+        <div class="canvas-actions">
+          <el-button @click="resetToDefault">恢复默认布局</el-button>
+          <el-button type="danger" plain :disabled="!items.length" @click="clearAll">
+            清空画布
+          </el-button>
+        </div>
+      </div>
+
+      <div class="canvas-body">
+        <GridStackVue
+          ref="gridRef"
+          :options="gridOptions"
+          @added="onAdded"
+          @change="schedulePersist"
+          @dragstart="onDragStart"
         >
-          <component
-            v-if="charts.get(item.i)"
-            :is="charts.get(item.i).chart"
-            :key="item.i"
-            :index="item.i"
-            :style="{
-              width: charts.get(item.i).width,
-              height: charts.get(item.i).height,
-            }"
-            ref="chartRef"
-          ></component>
-        </GridItem>
-      </GridLayout>
-    </div>
-    <div class="right-container"></div>
+          <GridStackItem
+            v-for="item in items"
+            :key="item.id"
+            :id="item.id"
+            :options="{ id: item.id }"
+          >
+            <ChartCard
+              :title="item.props.title"
+              :chart-type="item.props.chartType"
+              :theme="item.props.theme"
+              :selected="item.id === selectedId"
+              @select="selectCard(item.id)"
+              @remove="removeCard(item.id)"
+            />
+          </GridStackItem>
+        </GridStackVue>
+        <div v-if="!items.length" class="canvas-empty">
+          从左侧拖入图表，或点击「恢复默认布局」
+        </div>
+      </div>
+    </main>
+
+    <aside class="right-container">
+      <PropertyPanel :item="selectedItem" @update="updateSelected" @remove="removeSelected" />
+    </aside>
   </div>
 </template>
 
@@ -44,224 +55,290 @@
 export default { name: "DragLayout" };
 </script>
 <script lang="ts" setup>
-import { computed, nextTick, reactive, ref, shallowRef } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from "vue";
+import { GridStack as GridStackCore, Utils, type GridStack } from "gridstack";
+import {
+  GridStack as GridStackVue,
+  GridStackItem,
+  type GridStackNode,
+  type GridStackOptions,
+  type GridStackWidget,
+} from "gridstack/dist/vue";
+import "gridstack/dist/gridstack.min.css";
 import Left from "./components/left.vue";
-import { GridLayout, GridItem, LayoutItemRequired } from "grid-layout-plus";
-import { useDragOver } from "./";
-import LineChart from "./components/line-chart.vue";
-import BarChart from "./components/bar-chart.vue";
-import PieChart from "./components/pie-chart.vue";
+import ChartCard from "./components/ChartCard.vue";
+import PropertyPanel from "./components/PropertyPanel.vue";
+import {
+  CARD_HEIGHT,
+  CARD_WIDTH,
+  GRID_COLUMNS,
+  GRID_MARGIN,
+  PANELS,
+  createId,
+  createProps,
+  defaultCards,
+  type CardItem,
+  type CardProps,
+  type ChartType,
+} from "./types";
+import { loadLayout, saveLayout } from "./layout-storage";
 
-const layout = ref<Array<LayoutItemRequired>>([]);
-const wrapper = ref<HTMLElement>();
-const gridLayout = shallowRef<InstanceType<typeof GridLayout>>();
-const { position } = useDragOver();
-const charts = shallowRef(new Map());
-const chartRef = ref<Array<InstanceType<typeof LineChart>>>();
+type NodeWithProps = GridStackNode & { props?: Partial<CardProps> };
+type WidgetSpec = GridStackWidget & { props?: Record<string, unknown> };
 
-const dropId = "drop";
-const dragItem = {
-  x: -1,
-  y: -1,
-  w: 2,
-  h: 2,
-  i: "",
-} as LayoutItemRequired;
+const rootEl = ref<HTMLElement>();
+const gridRef = shallowRef<{ getGrid: () => GridStack | null }>();
+const getGrid = () => gridRef.value?.getGrid() ?? null;
 
-/**
- * @description 拖拽时展示位置
- */
-// 定义一个名为drag的函数
-const drag = () => {
-  // 获取父元素的矩形位置
-  const parentRect = wrapper.value?.getBoundingClientRect();
+const initialItems = loadLayout() ?? defaultCards();
+const items = ref<CardItem[]>(initialItems);
+const selectedId = ref<string | null>(null);
+const selectedItem = computed(
+  () => items.value.find((item) => item.id === selectedId.value) ?? null,
+);
 
-  // 如果没有父元素的矩形位置或者没有gridLayout.value，则直接返回
-  if (!parentRect || !gridLayout.value) return;
+const toWidget = (card: CardItem): GridStackWidget => ({
+  id: card.id,
+  x: card.x,
+  y: card.y,
+  w: card.w,
+  h: card.h,
+});
 
-  // 判断鼠标是否在grid中
-  const mouseInGrid =
-    position.value.x > parentRect.left &&
-    position.value.x < parentRect.right &&
-    position.value.y > parentRect.top &&
-    position.value.y < parentRect.bottom;
-
-  // 如果鼠标在grid中，且没有找到layout.value中i为dropId的元素，则将其添加到layout.value中
-  if (mouseInGrid && !layout.value.find((item) => item.i === dropId)) {
-    layout.value.push({
-      x: (layout.value.length * 2) % 12,
-      y: layout.value.length + 12, // puts it at the bottom
-      w: 2,
-      h: 2,
-      i: dropId,
-    });
-  }
-
-  // 获取layout.value中i为dropId的元素的索引
-  const index = layout.value.findIndex((item) => item.i === dropId);
-
-  // 如果索引不为-1，则获取gridLayout.value中dropId的元素
-  if (index !== -1) {
-    const item = gridLayout.value.getItem(dropId);
-
-    // 如果没有找到gridLayout.value中dropId的元素，则直接返回
-    if (!item) return;
-
-    // 尝试将gridLayout.value中dropId的元素的display设置为none
-    try {
-      item.wrapper.style.display = "none";
-    } catch (e) {}
-
-    // 将gridLayout.value中dropId的元素的top和left设置为position.value.y和position.value.x
-    Object.assign(item.state, {
-      top: position.value.y - parentRect.top,
-      left: position.value.x - parentRect.left,
-    });
-    // 计算gridLayout.value中dropId的元素的新位置
-    const newPos = item.calcXY(
-      position.value.y - parentRect.top,
-      position.value.x - parentRect.left,
-    );
-
-    // 如果鼠标在grid中，则触发gridLayout.value的dragstart事件
-    if (mouseInGrid) {
-      gridLayout.value.dragEvent(
-        "dragstart",
-        dropId,
-        newPos.x,
-        newPos.y,
-        dragItem.h,
-        dragItem.w,
-      );
-      // 将dragItem的i、x和y设置为index、layout.value[index].x和layout.value[index].y
-      dragItem.i = String(index);
-      dragItem.x = layout.value[index].x;
-      dragItem.y = layout.value[index].y;
-    } else {
-      // 如果鼠标不在grid中，则触发gridLayout.value的dragend事件
-      gridLayout.value.dragEvent(
-        "dragend",
-        dropId,
-        newPos.x,
-        newPos.y,
-        dragItem.h,
-        dragItem.w,
-      );
-      // 从layout.value中移除i为dropId的元素
-      layout.value = layout.value.filter((item) => item.i !== dropId);
-    }
-  }
+const gridOptions: GridStackOptions = {
+  column: GRID_COLUMNS,
+  cellHeight: 100,
+  margin: GRID_MARGIN,
+  animate: true,
+  mode: "float",
+  acceptWidgets: true,
+  draggable: { handle: ".card-head" },
+  resizable: { handles: "all" },
+  children: initialItems.map(toWidget),
 };
-/**
- * @description 拖拽结束 添加layout和chart组件
- */
-function dragEnd(chart: any) {
-  // 获取父元素的位置信息
-  const parentRect = wrapper.value?.getBoundingClientRect();
 
-  // 如果没有父元素位置信息或者没有gridLayout，则直接返回
-  if (!parentRect || !gridLayout.value) return;
+let dragGhost: HTMLElement | null = null;
 
-  // 判断鼠标是否在grid内
-  const mouseInGrid =
-    position.value.x > parentRect.left &&
-    position.value.x < parentRect.right &&
-    position.value.y > parentRect.top &&
-    position.value.y < parentRect.bottom;
-
-  // 如果在grid内，则触发grid的dragend事件，并将layout中的当前项删除
-  if (mouseInGrid) {
-    gridLayout.value.dragEvent(
-      "dragend",
-      dropId,
-      dragItem.x,
-      dragItem.y,
-      dragItem.h,
-      dragItem.w,
-    );
-    layout.value = layout.value.filter((item) => item.i !== dropId);
-  } else {
-    return;
-  }
-
-  // 获取grid中的当前项
-  const item = gridLayout.value.getItem(dropId);
-
-  // 将当前项添加到layout中
-  layout.value.push({
-    x: dragItem.x,
-    y: dragItem.y,
-    w: dragItem.w,
-    h: dragItem.h,
-    i: dragItem.i,
-  });
-  // 触发grid的dragend事件
-  gridLayout.value.dragEvent(
-    "dragend",
-    dragItem.i,
-    dragItem.x,
-    dragItem.y,
-    dragItem.h,
-    dragItem.w,
-  );
-
-  // 根据chart的id，将chart添加到charts中
-  switch (chart.id) {
-    case 1:
-      charts.value.set(dragItem.i, {
-        index: dragItem.i,
-        chartId: chart.id,
-        chart: LineChart,
-        width: item.state.style.width,
-        height: item.state.style.height,
-      });
-      break;
-    case 2:
-      charts.value.set(dragItem.i, {
-        index: dragItem.i,
-        chartId: chart.id,
-        chart: BarChart,
-        width: item.state.style.width,
-        height: item.state.style.height,
-      });
-      break;
-    case 3:
-      charts.value.set(dragItem.i, {
-        index: dragItem.i,
-        chartId: chart.id,
-        chart: PieChart,
-        width: item.state.style.width,
-        height: item.state.style.height,
-      });
-      break;
-  }
-
-  // 将当前项在grid中的样式设置为正常显示
-  if (!item) return;
-  try {
-    item.wrapper.style.display = "";
-  } catch (e) {}
+function getDropSize() {
+  const grid = getGrid();
+  const cellWidth = grid?.cellWidth() ?? 110;
+  const cellHeight = grid?.getCellHeight(true) ?? 100;
+  return {
+    width: CARD_WIDTH * cellWidth - GRID_MARGIN * 2,
+    height: CARD_HEIGHT * cellHeight - GRID_MARGIN * 2,
+  };
 }
-/**
- * @description 改变item大小 重新渲染图表
- */
-const resized = (
-  i: number | string,
-  newH: number,
-  newW: number,
-  newHPx: number,
-  newWPx: number,
-) => {
-  const chart = charts.value.get(i);
-  chart.width = newWPx + "px";
-  chart.height = newHPx + "px";
-  nextTick(() => {
-    if (chartRef.value) {
-      const chartEl = chartRef.value[Number(i)];
-      chartEl.resize();
-    }
+
+function createDragGhost(source: HTMLElement) {
+  const { width, height } = getDropSize();
+  const ghost = document.createElement("div");
+  ghost.className = "drag-ghost";
+  ghost.style.width = `${width}px`;
+  ghost.style.height = `${height}px`;
+
+  const head = document.createElement("div");
+  head.className = "drag-ghost-head";
+  head.textContent = source.querySelector(".left-item-title")?.textContent?.trim() ?? "";
+
+  const body = document.createElement("div");
+  body.className = "drag-ghost-body";
+  const sourceImage = source.querySelector("img");
+  if (sourceImage) {
+    const image = document.createElement("img");
+    image.src = sourceImage.getAttribute("src") ?? "";
+    image.alt = sourceImage.getAttribute("alt") ?? "";
+    body.appendChild(image);
+  }
+
+  ghost.append(head, body);
+  dragGhost = ghost;
+  return ghost;
+}
+
+function syncDragGhost(event: Event) {
+  if (!dragGhost) return;
+
+  const pointer = event as MouseEvent;
+  const { width, height } = getDropSize();
+
+  // gridstack 会用源元素尺寸覆盖 helper，这里改回目标格子大小，并让光标落在预览中心
+  dragGhost.style.width = `${width}px`;
+  dragGhost.style.height = `${height}px`;
+  dragGhost.style.left = `${pointer.clientX - width / 2}px`;
+  dragGhost.style.top = `${pointer.clientY - height / 2}px`;
+}
+
+function resetDragGhost() {
+  dragGhost = null;
+}
+
+let saveTimer: number | undefined;
+
+function flushPersist() {
+  if (saveTimer !== undefined) {
+    window.clearTimeout(saveTimer);
+    saveTimer = undefined;
+  }
+
+  const grid = getGrid();
+  saveLayout(
+    items.value.map((item) => {
+      const node = grid ? Utils.findInGrid(grid, item.id) : undefined;
+      return {
+        ...item,
+        x: node?.x ?? item.x,
+        y: node?.y ?? item.y,
+        w: node?.w ?? item.w,
+        h: node?.h ?? item.h,
+      };
+    }),
+  );
+}
+
+function schedulePersist() {
+  if (saveTimer !== undefined) window.clearTimeout(saveTimer);
+  saveTimer = window.setTimeout(flushPersist, 300);
+}
+
+watch(items, schedulePersist, { deep: true });
+
+async function refreshDragHandles() {
+  await nextTick();
+  const grid = getGrid();
+  if (!grid) return;
+
+  items.value.forEach((item) => {
+    const node = Utils.findInGrid(grid, item.id);
+    if (node?.el) grid.refreshDragHandles(node.el);
   });
-};
+}
+
+function onAdded(_event: Event, nodes: GridStackNode[]) {
+  let changed = false;
+
+  nodes.forEach((rawNode) => {
+    const node = rawNode as NodeWithProps;
+    if (node.id && items.value.some((item) => item.id === node.id)) return;
+
+    const id = node.id ?? createId();
+    node.id = id;
+
+    const props = createProps(node.props?.chartType ?? "line", node.props?.title);
+    node.props = props;
+
+    items.value.push({
+      id,
+      x: node.x ?? 0,
+      y: node.y ?? 0,
+      w: node.w ?? CARD_WIDTH,
+      h: node.h ?? CARD_HEIGHT,
+      props,
+    });
+    changed = true;
+  });
+
+  if (!changed) return;
+  void refreshDragHandles();
+  schedulePersist();
+}
+
+function onDragStart(_event: Event, element: HTMLElement) {
+  const id = (element as HTMLElement & { gridstackNode?: GridStackNode }).gridstackNode?.id;
+  if (id) selectedId.value = id;
+}
+
+function selectCard(id: string) {
+  selectedId.value = id;
+}
+
+function addCard(type: ChartType) {
+  const spec: WidgetSpec = {
+    w: CARD_WIDTH,
+    h: CARD_HEIGHT,
+    autoPosition: true,
+    props: { chartType: type },
+  };
+  getGrid()?.addWidget(spec);
+}
+
+function removeCard(id: string) {
+  const grid = getGrid();
+  const node = grid ? Utils.findInGrid(grid, id) : undefined;
+  // 先移除 grid 节点，再删数组项，避免 GridStackItem 卸载时留下孤儿 DOM
+  if (grid && node?.el) grid.removeWidget(node.el);
+
+  items.value = items.value.filter((item) => item.id !== id);
+  if (selectedId.value === id) selectedId.value = null;
+  schedulePersist();
+}
+
+function removeSelected() {
+  if (selectedId.value) removeCard(selectedId.value);
+}
+
+function clearAll() {
+  const grid = getGrid();
+  if (!grid) return;
+
+  grid.removeAll(true);
+  items.value = [];
+  selectedId.value = null;
+  flushPersist();
+}
+
+function resetToDefault() {
+  const grid = getGrid();
+  if (!grid) return;
+
+  const next = defaultCards();
+  grid.removeAll(true);
+  items.value = next;
+  grid.batchUpdate();
+  next.forEach((card) => grid.addWidget(toWidget(card)));
+  grid.batchUpdate(false);
+
+  selectedId.value = null;
+  void refreshDragHandles();
+  schedulePersist();
+}
+
+function updateSelected(patch: Partial<CardProps>) {
+  const item = selectedItem.value;
+  if (!item) return;
+  item.props = { ...item.props, ...patch };
+}
+
+onMounted(() => {
+  const paletteElements = Array.from(
+    rootEl.value?.querySelectorAll<HTMLElement>(".left-item") ?? [],
+  );
+  if (paletteElements.length) {
+    const dragInWidgets: WidgetSpec[] = PANELS.map((panel) => ({
+      w: CARD_WIDTH,
+      h: CARD_HEIGHT,
+      props: { chartType: panel.type },
+    }));
+    GridStackCore.setupDragIn(
+      paletteElements,
+      {
+        appendTo: "body",
+        helper: createDragGhost,
+        start: syncDragGhost,
+        drag: syncDragGhost,
+        stop: resetDragGhost,
+      },
+      dragInWidgets,
+    );
+  }
+
+  window.addEventListener("beforeunload", flushPersist);
+  void refreshDragHandles();
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("beforeunload", flushPersist);
+  flushPersist();
+});
 </script>
 
 <style lang="scss" scoped>
@@ -269,41 +346,117 @@ const resized = (
   display: flex;
   min-height: 100%;
   overflow-x: hidden;
-  .left-container {
-    background-color: #ccc;
-    flex: 0 0 400px;
-  }
-  .main-container {
-    flex: 1 1 auto;
-    background-color: #eee;
-    min-width: 900px;
-  }
-  .right-container {
-    flex: 0 0 400px;
-    background-color: #ccc;
-  }
 }
-:deep(.vgl-item) {
+
+.left-container {
+  flex: 0 0 400px;
+  background-color: #ccc;
+}
+
+.main-container {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 900px;
+  background-color: #eee;
+}
+
+.right-container {
+  flex: 0 0 400px;
+  padding: 10px;
+  overflow: auto;
+  background-color: #ccc;
+}
+
+.canvas-toolbar {
+  display: flex;
+  flex: 0 0 48px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
   background-color: #fff;
+  border-bottom: 1px solid #e4e7ed;
 }
-:deep(.vgl-item--placeholder) {
-  background-color: green;
-  opacity: 0.3;
+
+.canvas-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
 }
-:deep(.vgl-layout::before) {
+
+.canvas-body {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 10px;
+  overflow: auto;
+}
+
+.canvas-empty {
   position: absolute;
-  width: calc(100% - 5px);
-  height: calc(100% - 5px);
-  margin: 5px;
-  content: "";
-  background-image:
-    linear-gradient(to right, lightgrey 1px, transparent 1px),
-    linear-gradient(to bottom, lightgrey 1px, transparent 1px);
-  background-repeat: repeat;
-  background-size: calc((100% - 5px) / 8) 100px;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: #999;
+  pointer-events: none;
 }
-:deep(.vgl-layout) {
+
+:deep(.gs-wrapper) {
+  height: 100%;
+}
+
+:deep(.grid-stack) {
   min-height: 100%;
-  // height: 900px;
+  background-image:
+    linear-gradient(to right, rgba(0, 0, 0, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.06) 1px, transparent 1px);
+  background-size: var(--gs-column-width) var(--gs-cell-height);
+}
+
+:deep(.grid-stack-placeholder > .placeholder-content) {
+  background: rgba(64, 158, 255, 0.2);
+  border: 1px dashed #409eff;
+}
+
+:deep(.grid-stack > .grid-stack-item > .grid-stack-item-content) {
+  overflow: hidden;
+}
+
+:global(.drag-ghost) {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  pointer-events: none;
+  background-color: rgba(255, 255, 255, 0.92);
+  border: 1px dashed #409eff;
+  border-radius: 4px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
+}
+
+:global(.drag-ghost-head) {
+  display: flex;
+  flex: 0 0 34px;
+  align-items: center;
+  height: 34px;
+  padding: 0 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  border-bottom: 1px solid #eee;
+}
+
+:global(.drag-ghost-body) {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+:global(.drag-ghost-body img) {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 </style>

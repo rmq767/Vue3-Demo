@@ -2,17 +2,27 @@
   <div class="left">
     <div class="left-list">
       <div
-        class="left-item"
-        v-for="item in state.coms"
-        :key="item.id"
-        draggable="true"
-        unselectable="on"
-        @drag="drag"
-        @dragend="(e) => dragEnd(item, e)"
+        v-for="panel in PANELS"
+        :key="panel.type"
+        class="left-item grid-stack-item"
       >
-        <img :src="item.img" :alt="item.name" />
+        <div class="left-item-content grid-stack-item-content">
+          <img :src="panel.img" :alt="panel.title" draggable="false" />
+          <div class="left-item-bar">
+            <span class="left-item-title">{{ panel.title }}</span>
+            <el-button
+              class="left-item-add"
+              type="primary"
+              size="small"
+              circle
+              :icon="Plus"
+              @click.stop="emit('add', panel.type)"
+            />
+          </div>
+        </div>
       </div>
     </div>
+    <p class="left-tip">拖拽到右侧画布，或点击 + 添加</p>
   </div>
 </template>
 
@@ -20,57 +30,59 @@
 export default { name: "Left" };
 </script>
 <script lang="ts" setup>
-import { reactive } from "vue";
+import { Plus } from "@element-plus/icons-vue";
+import { PANELS, type ChartType } from "../types";
 
-const emit = defineEmits(["drag", "dragEnd"]);
-
-const state = reactive({
-  coms: [
-    {
-      id: 1,
-      name: "折线图",
-      type: "line1",
-      img: "https://echarts.apache.org/examples/data/thumb/line-simple.webp?_v_=1724900876815",
-    },
-    {
-      id: 2,
-      name: "柱状图",
-      type: "bar1",
-      img: "https://echarts.apache.org/examples/data/thumb/bar-simple.webp?_v_=1724900876815",
-    },
-    {
-      id: 3,
-      name: "饼图",
-      type: "pie1",
-      img: "https://echarts.apache.org/examples/data/thumb/pie-simple.webp?_v_=1724900876815",
-    },
-  ],
-});
-
-const drag = (e: DragEvent) => {
-  emit("drag", e);
-};
-const dragEnd = (item: any, e: DragEvent) => {
-  emit("dragEnd", item, e);
-};
+const emit = defineEmits<{
+  (e: "add", type: ChartType): void;
+}>();
 </script>
 
 <style lang="scss" scoped>
 .left {
+  padding: 10px;
   .left-list {
     display: flex;
     flex-wrap: wrap;
-    .left-item {
-      width: 180px;
-      height: 140px;
-      background-color: #fff;
-      margin: 10px;
-      cursor: move;
-      img {
-        width: 100%;
-        object-fit: cover;
-      }
+  }
+  .left-item {
+    width: 180px;
+    height: 140px;
+    margin: 10px;
+    overflow: hidden;
+    cursor: grab;
+    background-color: #fff;
+    border-radius: 4px;
+    touch-action: none;
+    user-select: none;
+    &:active {
+      cursor: grabbing;
     }
+    img {
+      width: 100%;
+      height: 104px;
+      object-fit: cover;
+      pointer-events: none;
+    }
+  }
+  .left-item-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  .left-item-bar {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 8px;
+    font-size: 13px;
+    color: #333;
+  }
+  .left-tip {
+    margin: 10px;
+    font-size: 12px;
+    color: #666;
   }
 }
 </style>
