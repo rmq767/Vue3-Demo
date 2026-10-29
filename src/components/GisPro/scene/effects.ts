@@ -39,7 +39,7 @@ function findTarget(
       x: well.pos.x,
       z: well.pos.z,
       y: heightAt(well.pos.x, well.pos.z) + 2,
-      radius: 32,
+      radius: 18,
       color,
     };
   }

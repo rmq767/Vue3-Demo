@@ -16,7 +16,9 @@ export interface PipelineSystem {
 interface PipelineMesh {
   pipeline: Pipeline;
   mesh: THREE.Mesh;
+  casing: THREE.Mesh;
   baseMaterial: THREE.Material;
+  casingMaterial: THREE.MeshBasicMaterial;
 }
 
 function baseMaterial(materials: SceneMaterials, pipeline: Pipeline): THREE.Material {
@@ -29,6 +31,7 @@ export function createPipelineSystem(
   field: FieldData,
   materials: SceneMaterials,
   heightAt: (x: number, z: number) => number,
+  palette: ScenePalette,
 ): PipelineSystem {
   const group = new THREE.Group();
   group.name = "pipelines";
@@ -42,7 +45,8 @@ export function createPipelineSystem(
     );
     if (points.length < 2) continue;
     const curve = new THREE.CatmullRomCurve3(points);
-    const radius = pipeline.medium === "water" ? 2.2 : 2.8;
+    // 实际管径只有 DN300–450，但按真实比例在 10 km 视距下不足 1px，只能适度夸张。
+    const radius = pipeline.medium === "water" ? 3.6 : 4.2;
     const geometry = new THREE.TubeGeometry(curve, 72, radius, 6, false);
     const material = baseMaterial(materials, pipeline);
     const mesh = new THREE.Mesh(geometry, material);
@@ -53,7 +57,24 @@ export function createPipelineSystem(
     mesh.userData.kind = "pipeline";
     group.add(mesh);
     pickables.push(mesh);
-    meshes.push({ pipeline, mesh, baseMaterial: material });
+
+    // BackSide 放大的深色外壳做出制图描边，让管线在卫星影像上保持清晰边缘。
+    const casingMaterial = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(palette.pipeCasing),
+      transparent: true,
+      opacity: palette.pipeCasingOpacity,
+      side: THREE.BackSide,
+      depthWrite: false,
+    });
+    const casing = new THREE.Mesh(
+      new THREE.TubeGeometry(curve, 72, radius + 1.4, 6, false),
+      casingMaterial,
+    );
+    casing.name = `${pipeline.id}-casing`;
+    casing.renderOrder = 1;
+    group.add(casing);
+
+    meshes.push({ pipeline, mesh, casing, baseMaterial: material, casingMaterial });
   }
 
   return {
@@ -78,11 +99,18 @@ export function createPipelineSystem(
         entry.mesh.material = id === entry.pipeline.id ? materials.pipeSelected : entry.baseMaterial;
       }
     },
-    applyTheme: () => {
-      // 管线材质由 threeStage 的 SceneMaterials 统一更新。
+    applyTheme: (next: ScenePalette) => {
+      meshes.forEach((entry) => {
+        entry.casingMaterial.color.set(next.pipeCasing);
+        entry.casingMaterial.opacity = next.pipeCasingOpacity;
+      });
     },
     dispose: () => {
-      meshes.forEach((entry) => entry.mesh.geometry.dispose());
+      meshes.forEach((entry) => {
+        entry.mesh.geometry.dispose();
+        entry.casing.geometry.dispose();
+        entry.casingMaterial.dispose();
+      });
     },
   };
 }

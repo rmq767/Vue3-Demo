@@ -5,14 +5,12 @@ import {
   type ScenePalette,
   type ThemeMode,
 } from "../styles/tokens";
-import { createMarkerDataUrl } from "../fx/materials";
 
 const GAODE_URL =
   "https://webst02.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}";
 
 export interface CesiumBase {
   viewer: Cesium.Viewer;
-  setMarkerVisible(visible: boolean): void;
   setUnderground(active: boolean): void;
   getImageryStatus(): ImageryStatus;
   applyTheme(mode: ThemeMode): void;
@@ -109,6 +107,7 @@ export function createCesiumBase(options: CesiumBaseOptions): CesiumBase {
   imageryLayer.contrast = palette.imagery.contrast;
   imageryLayer.saturation = palette.imagery.saturation;
   imageryLayer.gamma = palette.imagery.gamma;
+  imageryLayer.alpha = palette.imagery.alpha;
 
   let imageryFailed = false;
   gaodeProvider.errorEvent.addEventListener(() => {
@@ -120,18 +119,6 @@ export function createCesiumBase(options: CesiumBaseOptions): CesiumBase {
   const statusTimer = window.setTimeout(() => {
     if (!imageryFailed) setImageryStatus("gaode");
   }, 1200);
-
-  const marker = viewer.entities.add({
-    position: Cesium.Cartesian3.fromDegrees(field.center.lon, field.center.lat, 0),
-    billboard: {
-      image: createMarkerDataUrl(palette.marker),
-      scale: 1.1,
-      scaleByDistance: new Cesium.NearFarScalar(30_000, 0.45, 2_000_000, 1.9),
-      disableDepthTestDistance: Number.POSITIVE_INFINITY,
-      verticalOrigin: Cesium.VerticalOrigin.CENTER,
-      horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
-    },
-  });
 
   const rebuildGrid = (next: ScenePalette): void => {
     if (gridLayer) viewer.imageryLayers.remove(gridLayer, true);
@@ -153,9 +140,7 @@ export function createCesiumBase(options: CesiumBaseOptions): CesiumBase {
     imageryLayer.contrast = palette.imagery.contrast;
     imageryLayer.saturation = palette.imagery.saturation;
     imageryLayer.gamma = palette.imagery.gamma;
-    if (marker.billboard) {
-      marker.billboard.image = new Cesium.ConstantProperty(createMarkerDataUrl(palette.marker));
-    }
+    imageryLayer.alpha = palette.imagery.alpha;
     rebuildGrid(palette);
     scene.requestRender();
   };
@@ -171,10 +156,6 @@ export function createCesiumBase(options: CesiumBaseOptions): CesiumBase {
 
   return {
     viewer,
-    setMarkerVisible: (visible: boolean) => {
-      marker.show = visible;
-      scene.requestRender();
-    },
     setUnderground: (active: boolean) => {
       underground = active;
       scene.globe.show = !active;

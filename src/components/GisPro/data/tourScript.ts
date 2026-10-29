@@ -15,8 +15,8 @@ function centerState(overrides: Partial<CameraState> = {}): CameraState {
     z: 0,
     height: TOP,
     heading: -18,
-    pitch: -34,
-    range: 11_000,
+    pitch: -38,
+    range: 15_000,
     ...overrides,
   };
 }
@@ -33,7 +33,7 @@ function platformState(
     height: TOP,
     heading: -26,
     pitch: -30,
-    range: 2400,
+    range: 1400,
     ...overrides,
   };
 }
@@ -120,7 +120,7 @@ export function createTourScript(field: FieldData): TourScript {
           subtitle: "原料气集输 · 脱硫净化 · 净化气外输",
           duration: 4.8,
           hold: 1.6,
-          state: centerState({ heading: -52, pitch: -30, range: 13_000 }),
+          state: centerState({ heading: -52, pitch: -34, range: 15_500 }),
         },
       ],
     },
@@ -148,7 +148,7 @@ export function createTourScript(field: FieldData): TourScript {
           hold: 2.0,
           cue: "well",
           targetId: warningWell?.id,
-          state: platformState(field, "PF-08", { heading: -12, pitch: -24, range: 1700 }),
+          state: platformState(field, "PF-08", { heading: -12, pitch: -24, range: 1200 }),
         },
       ],
     },

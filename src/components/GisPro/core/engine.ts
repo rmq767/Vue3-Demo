@@ -13,7 +13,7 @@ import type {
   LayerKey,
   Stats,
 } from "../data/types";
-import { buildFeatureDetail, findPipeline, findStation, findWell } from "../data/chuanxi";
+import { buildFeatureDetail, findPipeline, findPlatform, findStation, findWell } from "../data/chuanxi";
 import { createSimulation } from "../data/simulation";
 import { createTourScript } from "../data/tourScript";
 import { createCesiumBase } from "./cesiumBase";
@@ -96,13 +96,13 @@ export function createEngine(
   const facilities = createFacilities(field, stage.materials, groundHeight, scenePalette);
   fieldGroup.add(facilities.group);
 
-  const pipelines = createPipelineSystem(field, stage.materials, groundHeight);
+  const pipelines = createPipelineSystem(field, stage.materials, groundHeight, scenePalette);
   fieldGroup.add(pipelines.group);
 
   const effects: EffectsSystem = createEffects(field, scenePalette, groundHeight, fieldGroup);
 
   let activateLabel:
-    | ((id: string, kind: "well" | "station" | "pipeline" | "block") => void)
+    | ((id: string, kind: "well" | "station" | "platform" | "pipeline" | "block") => void)
     | null = null;
   const labels = createLabelSystem(
     elements.labels,
@@ -245,9 +245,37 @@ export function createEngine(
     );
   };
 
+  const focusPlatform = (id: string): void => {
+    const platform = findPlatform(field, id);
+    if (!platform) return;
+    tour?.stop();
+    focusOrigin = null;
+    selectedId = null;
+    selectedKind = null;
+    callbacks.onSelect?.(null);
+    labels.setSelected(null);
+    effects.setSelection("well", null);
+    pipelines.setSelected(null);
+    animateCamera(
+      {
+        x: platform.pos.x,
+        z: platform.pos.z,
+        height: 0,
+        heading: rig.state.heading,
+        pitch: -26,
+        range: 1600,
+      },
+      1.05,
+    );
+  };
+
   activateLabel = (id, kind) => {
     if (kind === "block") {
       focusBlock(id);
+      return;
+    }
+    if (kind === "platform") {
+      focusPlatform(id);
       return;
     }
     selectById(id, true);
@@ -263,9 +291,9 @@ export function createEngine(
     fieldGroup.visible = false;
     labels.setEnabled(false);
     callbacks.onLayer?.("labels", false);
-    cesiumBase.setMarkerVisible(false);
     cesiumBase.setUnderground(true);
     wellTrajectory.open(well);
+    orbit?.setPitchRange(-88, 65);
     callbacks.onSceneMode?.("trajectory");
     callbacks.onTourTrajectory?.(true);
   };
@@ -278,6 +306,7 @@ export function createEngine(
     fieldGroup.visible = true;
     cesiumBase.setUnderground(false);
     labels.setEnabled(labelsVisible);
+    orbit?.setPitchRange(-85, -14);
     callbacks.onLayer?.("labels", labelsVisible);
     callbacks.onSceneMode?.("surface");
     callbacks.onTourTrajectory?.(false);
@@ -300,6 +329,7 @@ export function createEngine(
     fieldGroup.visible = true;
     cesiumBase.setUnderground(false);
     labels.setEnabled(labelsVisible);
+    orbit?.setPitchRange(-85, -14);
     callbacks.onLayer?.("labels", labelsVisible);
     callbacks.onSceneMode?.("surface");
     animateCamera(script.overview, 1.15);
@@ -317,9 +347,9 @@ export function createEngine(
     fieldGroup.visible = false;
     labels.setEnabled(false);
     callbacks.onLayer?.("labels", false);
-    cesiumBase.setMarkerVisible(false);
     cesiumBase.setUnderground(true);
     wellTrajectory.open(well);
+    orbit?.setPitchRange(-88, 65);
     callbacks.onSceneMode?.("trajectory");
     const sectionDepth = Math.max(1600, Math.ceil((well.depth + 180) / 100) * 100);
     const sectionCenter = -sectionDepth / 2 + 500;
@@ -496,7 +526,10 @@ export function createEngine(
 
     const range = rig.state.range;
     fieldGroup.visible = !trajectoryMode && range < 200_000;
-    cesiumBase.setMarkerVisible(!trajectoryMode && range > 26_000);
+    // 近景交给井口模型，二维圆环只在 2.6–6km 的中景当作定位点。
+    facilities.setMarkerMode(
+      trajectoryMode ? "hidden" : range > 6000 ? "overview" : range < 2600 ? "near" : "detail",
+    );
 
     if (now - lastCameraUpdate > 480) {
       lastCameraUpdate = now;
@@ -606,6 +639,7 @@ export function createEngine(
       } else if (key === "stations") {
         facilities.stationGroup.visible = visible;
         labels.setKindEnabled("station", visible);
+        labels.setKindEnabled("platform", visible);
       } else if (key === "pipelines") {
         pipelines.group.visible = visible;
         labels.setKindEnabled("pipeline", visible);

@@ -5,7 +5,7 @@ import { pipelineMediumLabel } from "../data/chuanxi";
 
 interface LabelEntry {
   id: string;
-  kind: "well" | "station" | "pipeline" | "block";
+  kind: "well" | "station" | "platform" | "pipeline" | "block";
   object: CSS2DObject;
   element: HTMLDivElement;
   nameElement: HTMLElement;
@@ -109,6 +109,7 @@ export function createLabelSystem(
   const kindEnabled: Record<LabelEntry["kind"], boolean> = {
     well: true,
     station: true,
+    platform: true,
     pipeline: true,
     block: true,
   };
@@ -174,7 +175,7 @@ export function createLabelSystem(
       well.name,
       wellMetric(well),
       wellColor(well.kind, well.status),
-      12_000,
+      20_000,
     );
   }
 
@@ -188,15 +189,32 @@ export function createLabelSystem(
       station.name,
       stationMetric(station),
       "var(--af-primary)",
-      20_000,
+      32_000,
+    );
+  }
+
+  for (const platform of field.platforms ?? []) {
+    register(
+      platform.id,
+      "platform",
+      platform.pos.x,
+      96,
+      platform.pos.z,
+      platform.name,
+      `${platform.wellIds.length} 口井`,
+      "var(--af-gas)",
+      30_000,
     );
   }
 
   for (const block of field.blocks) {
+    // 东西两侧的区块圆心常被 HUD 面板遮挡，标签沿 x 向气田中心内收，仍落在区块圆内。
+    const labelX =
+      Math.abs(block.center.x) > block.radius * 0.6 ? block.center.x * 0.6 : block.center.x;
     register(
       block.id,
       "block",
-      block.center.x,
+      labelX,
       58,
       block.center.z,
       block.name,
@@ -222,7 +240,7 @@ export function createLabelSystem(
       pipeline.name,
       pipelineMetric(pipeline),
       pipelineColor(pipeline.medium, pipeline.status),
-      18_000,
+      28_000,
     );
   });
 
@@ -294,12 +312,18 @@ export function createLabelSystem(
       const forced =
         entry.id === selectedId ||
         alarmIds.has(entry.id) ||
-        entry.kind === "block";
+        entry.kind === "block" ||
+        entry.kind === "platform";
       if (!enabled || !kindEnabled[entry.kind]) {
         entry.object.visible = false;
         continue;
       }
       if (range > 16_000 && !forced) {
+        entry.object.visible = false;
+        continue;
+      }
+      // 总览视距下井位用符号表达，单井标签留给拉近后的巡检视角。
+      if (entry.kind === "well" && range > 8000 && !forced) {
         entry.object.visible = false;
         continue;
       }
@@ -317,7 +341,8 @@ export function createLabelSystem(
       projected.copy(world).project(camera);
       const screenX = (projected.x * 0.5 + 0.5) * 1920;
       const screenY = (-projected.y * 0.5 + 0.5) * 1080;
-      if (!forced && (screenX < -80 || screenX > 2000 || screenY < 70 || screenY > 1010)) {
+      // 左侧图层、右侧详情和底部章节条会遮住标签，压到 HUD 下的标签直接收起。
+      if (screenX < 372 || screenX > 1512 || screenY < 78 || screenY > 940) {
         entry.object.visible = false;
         continue;
       }
@@ -326,10 +351,13 @@ export function createLabelSystem(
 
     const priorityOf = (item: (typeof ranked)[number]): number => {
       if (item.entry.id === selectedId) return 0;
-      // 区块是 GIS 底图骨架，先让区块名占位，再显示告警 / 设施标签。
+      // 区块和平台是底图骨架，先占位，再显示告警与单井/站库标签。
       if (item.entry.kind === "block") return 1;
-      if (alarmIds.has(item.entry.id)) return 2;
-      return 3;
+      if (item.entry.kind === "platform") return 2;
+      if (alarmIds.has(item.entry.id)) return 3;
+      if (item.entry.kind === "station") return 4;
+      if (item.entry.kind === "pipeline") return 5;
+      return 6;
     };
     ranked.sort((a, b) => {
       if (a.forced !== b.forced) return a.forced ? -1 : 1;
@@ -344,8 +372,8 @@ export function createLabelSystem(
     });
 
     // 重点标签（区块 / 关键对象 / 选中 / 告警）不占普通标签名额，避免它们挤掉周边设施标签。
-    const maxLabels = range < 3000 ? 12 : 9;
-    const maxPipelines = range < 3000 ? 6 : 4;
+    const maxLabels = range > 6000 ? 14 : range < 3000 ? 12 : 9;
+    const maxPipelines = range > 6000 ? 3 : range < 3000 ? 6 : 4;
     const labelHalfWidth = 67;
     const labelHalfHeight = 14;
     let ordinaryShown = 0;

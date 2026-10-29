@@ -301,7 +301,7 @@ onBeforeUnmount(() => {
         <footer class="af-status">
           <div class="af-status__left">
             <span class="af-status__led"></span>
-            <span>103.9300°E / 31.0400°N</span>
+            <span>103.9000°E / 31.0575°N</span>
             <i></i>
             <span>川西气田 · 演示数据</span>
           </div>

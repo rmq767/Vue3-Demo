@@ -13,10 +13,18 @@ export interface WellTrajectoryView {
   dispose(): void;
 }
 
-const SECTION_WIDTH = 1100;
+const SECTION_MIN_WIDTH = 1400;
+const SECTION_MAX_WIDTH = 3200;
 const SECTION_DEPTH = 420;
 const MIN_DEPTH = 1600;
 const SURFACE_Y = 0;
+
+function sectionWidthFor(well: Well): number {
+  return Math.max(
+    SECTION_MIN_WIDTH,
+    Math.min(SECTION_MAX_WIDTH, well.lateralLength * 2 + 500),
+  );
+}
 
 function disposeGroup(group: THREE.Group): void {
   group.traverse((object) => {
@@ -68,13 +76,14 @@ function reservoirColor(key: string, palette: ScenePalette): string {
 
 function buildStrataBlock(well: Well, depth: number, palette: ScenePalette): THREE.Group {
   const group = new THREE.Group();
+  const sectionWidth = sectionWidthFor(well);
   const topMaterial = new THREE.MeshStandardMaterial({
     color: new THREE.Color(palette.concrete),
     roughness: 0.96,
     metalness: 0.02,
   });
   const top = new THREE.Mesh(
-    new THREE.BoxGeometry(SECTION_WIDTH + 40, 18, SECTION_DEPTH + 40),
+    new THREE.BoxGeometry(sectionWidth + 40, 18, SECTION_DEPTH + 40),
     topMaterial,
   );
   top.position.set(well.pos.x, SURFACE_Y, well.pos.z);
@@ -91,7 +100,7 @@ function buildStrataBlock(well: Well, depth: number, palette: ScenePalette): THR
       metalness: 0.02,
     });
     const mesh = new THREE.Mesh(
-      new THREE.BoxGeometry(SECTION_WIDTH, height, SECTION_DEPTH),
+      new THREE.BoxGeometry(sectionWidth, height, SECTION_DEPTH),
       material,
     );
     mesh.position.set(well.pos.x, (topY + bottomY) / 2, well.pos.z);
@@ -103,7 +112,7 @@ function buildStrataBlock(well: Well, depth: number, palette: ScenePalette): THR
       createSectionLabel(
         layer.name,
         `${Math.round(layer.from * depth)}–${Math.round(layer.to * depth)} m`,
-        well.pos.x - SECTION_WIDTH / 2 - 46,
+        well.pos.x - sectionWidth / 2 - 46,
         (topY + bottomY) / 2,
         well.pos.z + SECTION_DEPTH / 2 + 12,
         "right",
@@ -124,7 +133,7 @@ function buildStrataBlock(well: Well, depth: number, palette: ScenePalette): THR
       depthWrite: false,
     });
     const band = new THREE.Mesh(
-      new THREE.PlaneGeometry(SECTION_WIDTH - 4, bottomDepth - topDepth),
+      new THREE.PlaneGeometry(sectionWidth - 4, bottomDepth - topDepth),
       material,
     );
     band.position.set(
@@ -140,7 +149,7 @@ function buildStrataBlock(well: Well, depth: number, palette: ScenePalette): THR
         createSectionLabel(
           item.name,
           `${item.topDepth}–${item.bottomDepth} m`,
-          well.pos.x + SECTION_WIDTH / 2 + 46,
+          well.pos.x + sectionWidth / 2 + 46,
           SURFACE_Y - (topDepth + bottomDepth) / 2,
           well.pos.z + SECTION_DEPTH / 2 + 12,
           "left",
@@ -157,27 +166,27 @@ function buildWellPath(well: Well, depth: number, palette: ScenePalette): THREE.
   const group = new THREE.Group();
   const frontZ = well.pos.z + SECTION_DEPTH / 2 + 8;
   const reservoir = RESERVOIRS.find((item) => item.id === well.reservoirId) ?? RESERVOIRS[0];
+  const sectionWidth = sectionWidthFor(well);
   const reservoirTop = Math.min(depth - 20, reservoir.topDepth);
   const reservoirBottom = Math.min(depth - 12, reservoir.bottomDepth);
-  const lateral = well.lateralLength;
-  const lateralLength = lateral > 0 ? Math.max(260, lateral) : 0;
-  const dx = Math.cos(well.azimuth) * lateralLength;
-  const dz = Math.sin(well.azimuth) * lateralLength;
+  // 剖面只沿 x 轴展开水平段，避免方位角朝向镜头时把轨迹压成一条直线。
+  const lateralLength =
+    well.lateralLength > 0 ? Math.min(well.lateralLength, sectionWidth / 2 - 220) : 0;
   const start = new THREE.Vector3(well.pos.x, SURFACE_Y, frontZ);
   const kickoff = new THREE.Vector3(
     well.pos.x,
-    SURFACE_Y - Math.max(220, reservoirTop * 0.78),
+    SURFACE_Y - Math.max(220, reservoirTop * 0.7),
     frontZ,
   );
   const build = new THREE.Vector3(
-    well.pos.x + dx * 0.2,
+    well.pos.x + lateralLength * 0.22,
     SURFACE_Y - reservoirTop,
-    frontZ + dz * 0.2,
+    frontZ,
   );
   const end = new THREE.Vector3(
-    well.pos.x + dx,
+    well.pos.x + lateralLength,
     SURFACE_Y - Math.max(reservoirBottom, reservoirTop + 30),
-    frontZ + dz,
+    frontZ,
   );
 
   const totalDepthY = SURFACE_Y - Math.min(depth, well.depth);
@@ -196,7 +205,7 @@ function buildWellPath(well: Well, depth: number, palette: ScenePalette): THREE.
   const tube = new THREE.Mesh(geometry, material);
   group.add(tube);
 
-  const casingGeometry = new THREE.TubeGeometry(curve, 80, 7.5, 6, true);
+  const casingGeometry = new THREE.TubeGeometry(curve, 80, 7.5, 6, false);
   const casingMaterial = new THREE.MeshBasicMaterial({
     color: new THREE.Color(palette.selection),
     transparent: true,
@@ -208,8 +217,9 @@ function buildWellPath(well: Well, depth: number, palette: ScenePalette): THREE.
 
   const perforations: THREE.Vector3[] = [];
   const count = 7;
+  const perforationStart = lateralLength > 0 ? 0.8 : 0.7;
   for (let i = 0; i < count; i += 1) {
-    const t = 0.5 + (i / count) * 0.28;
+    const t = perforationStart + (i / count) * 0.16;
     perforations.push(curve.getPoint(t));
   }
   const pointsGeometry = new THREE.BufferGeometry().setFromPoints(perforations);
@@ -247,7 +257,7 @@ function buildWellPath(well: Well, depth: number, palette: ScenePalette): THREE.
   wellhead.add(headTop);
   group.add(wellhead);
 
-  const labelX = well.pos.x - SECTION_WIDTH / 2 - 46;
+  const labelX = well.pos.x - sectionWidth / 2 - 46;
   group.add(
     createSectionLabel(
       "井口",

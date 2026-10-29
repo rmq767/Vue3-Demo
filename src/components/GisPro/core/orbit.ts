@@ -10,16 +10,17 @@ interface OrbitOptions {
 export interface OrbitController {
   update(dt: number): void;
   sync(): void;
+  setPitchRange(min: number, max: number): void;
   setAutoRotate(active: boolean): void;
   isAutoRotating(): boolean;
   destroy(): void;
 }
 
-const MIN_PITCH = -85;
-const MAX_PITCH = -14;
+const DEFAULT_MIN_PITCH = -85;
+const DEFAULT_MAX_PITCH = -14;
 const MIN_RANGE = 180;
 const MAX_RANGE = 90_000;
-const TARGET_RADIUS = 14_000;
+const TARGET_RADIUS = 40_000;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -40,9 +41,14 @@ export function createOrbitController(options: OrbitOptions): OrbitController {
   let pinchDistance = 0;
   let multiTouch = false;
   let autoRotate = false;
+  let minPitch = DEFAULT_MIN_PITCH;
+  let maxPitch = DEFAULT_MAX_PITCH;
+  // 左键平移、右键或 Ctrl+左键旋转：像地图一样先把视野挪到目标区域，再决定看角度。
+  let gesture: "none" | "orbit" | "pan" = "none";
+  let tapCandidate = false;
 
   const clampState = (value: CameraState): void => {
-    value.pitch = clamp(value.pitch, MIN_PITCH, MAX_PITCH);
+    value.pitch = clamp(value.pitch, minPitch, maxPitch);
     value.range = clamp(value.range, MIN_RANGE, MAX_RANGE);
     const radius = Math.hypot(value.x, value.z);
     if (radius > TARGET_RADIUS) {
@@ -77,6 +83,11 @@ export function createOrbitController(options: OrbitOptions): OrbitController {
       moved = 0;
       lastX = event.clientX;
       lastY = event.clientY;
+      tapCandidate = event.button === 0;
+      gesture =
+        event.button === 2 || event.button === 1 || event.ctrlKey || event.metaKey
+          ? "orbit"
+          : "pan";
       try {
         canvas.setPointerCapture?.(event.pointerId);
       } catch {
@@ -84,6 +95,8 @@ export function createOrbitController(options: OrbitOptions): OrbitController {
       }
     } else {
       dragging = false;
+      tapCandidate = false;
+      gesture = "none";
       pinchDistance = pointerDistance();
     }
   };
@@ -111,13 +124,27 @@ export function createOrbitController(options: OrbitOptions): OrbitController {
     moved += Math.abs(dx) + Math.abs(dy);
     if (moved < 1) return;
 
-    desired.heading += dx * 0.18;
-    desired.pitch = clamp(desired.pitch - dy * 0.13, MIN_PITCH, MAX_PITCH);
+    if (gesture === "pan") {
+      const scale = (desired.range * 1.1) / Math.max(320, canvas.clientHeight || 1080);
+      const vertical = scale / Math.max(0.35, Math.sin(Math.abs(desired.pitch) * (Math.PI / 180)));
+      const rad = desired.heading * (Math.PI / 180);
+      const rightX = Math.cos(rad);
+      const rightZ = Math.sin(rad);
+      const forwardX = Math.sin(rad);
+      const forwardZ = -Math.cos(rad);
+      desired.x += -dx * scale * rightX + dy * vertical * forwardX;
+      desired.z += -dx * scale * rightZ + dy * vertical * forwardZ;
+      clampState(desired);
+    } else {
+      desired.heading += dx * 0.18;
+      desired.pitch = clamp(desired.pitch - dy * 0.13, minPitch, maxPitch);
+    }
     autoRotate = false;
   };
 
   const handlePointerUp = (event: PointerEvent): void => {
     const wasSingle = pointers.size === 1;
+    const wasTap = wasSingle && dragging && moved < 5 && !multiTouch && tapCandidate;
     pointers.delete(event.pointerId);
     try {
       canvas.releasePointerCapture?.(event.pointerId);
@@ -125,7 +152,7 @@ export function createOrbitController(options: OrbitOptions): OrbitController {
       // 指针捕获已自动释放。
     }
 
-    if (wasSingle && dragging && moved < 5 && !multiTouch) {
+    if (wasTap) {
       onTap(event.clientX, event.clientY);
     }
 
@@ -136,10 +163,13 @@ export function createOrbitController(options: OrbitOptions): OrbitController {
       dragging = true;
       moved = 100;
       pinchDistance = 0;
+      gesture = "pan";
     } else if (pointers.size === 0) {
       dragging = false;
       pinchDistance = 0;
       multiTouch = false;
+      gesture = "none";
+      tapCandidate = false;
     }
   };
 
@@ -187,6 +217,11 @@ export function createOrbitController(options: OrbitOptions): OrbitController {
   return {
     update,
     sync: syncDesired,
+    setPitchRange: (min: number, max: number) => {
+      minPitch = Math.min(min, max);
+      maxPitch = Math.max(min, max);
+      desired.pitch = clamp(desired.pitch, minPitch, maxPitch);
+    },
     setAutoRotate: (active: boolean) => {
       autoRotate = active;
     },

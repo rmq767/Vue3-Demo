@@ -90,6 +90,14 @@
     height: 100%;
   }
 
+  .cesium-widget canvas {
+    cursor: grab;
+
+    &:active {
+      cursor: grabbing;
+    }
+  }
+
   .cesium-widget-credits {
     display: none !important;
   }
@@ -3302,15 +3310,19 @@
 .af-scene-label {
   pointer-events: auto;
   cursor: pointer;
-  background: var(--af-surface);
+  background: color-mix(in srgb, var(--label-color) 7%, var(--af-surface));
   border: 1px solid var(--af-border);
+  border-left: 3px solid var(--label-color);
   border-radius: var(--af-radius-xs);
   box-shadow: 0 2px 8px color-mix(in srgb, var(--af-black) 10%, transparent);
   backdrop-filter: none;
   clip-path: none;
+  /* 卡片浮在锚点上方，露出下方的井位/站库符号，避免符号被文字盖住。 */
+  transform: translateY(calc(-50% - 9px));
 
   &:hover {
     border-color: var(--af-primary);
+    border-left-color: var(--label-color);
   }
 
   &:focus-visible {
@@ -3319,30 +3331,49 @@
   }
 
   &__dot {
+    width: 6px;
+    height: 6px;
     box-shadow: none;
   }
 
   &__copy strong {
+    font-size: 11px;
     color: var(--af-text);
     font-family: var(--af-font-body);
     letter-spacing: 0.01em;
   }
 
   &__copy span {
-    color: var(--af-text-muted);
+    color: var(--af-text-secondary);
     font-family: var(--af-font-number);
     letter-spacing: 0.01em;
   }
 
   &.is-selected {
     border-color: var(--af-primary);
-    box-shadow: 0 2px 8px color-mix(in srgb, var(--af-black) 12%, transparent);
+    border-left-color: var(--label-color);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--af-primary) 28%, transparent);
+  }
+
+  &.is-alarm {
+    border-color: var(--af-danger);
+    border-left-color: var(--af-danger);
   }
 
   &.is-block {
-    background: var(--af-surface);
-    border-color: var(--af-border);
+    background: color-mix(in srgb, var(--label-color) 13%, var(--af-surface));
+    border-color: color-mix(in srgb, var(--label-color) 34%, var(--af-border));
+    border-left-width: 4px;
     opacity: 1;
+
+    .af-scene-label__copy strong {
+      font-size: 12px;
+      letter-spacing: 0.02em;
+    }
+
+    .af-scene-label__copy span {
+      font-size: 10px;
+    }
   }
 }
 

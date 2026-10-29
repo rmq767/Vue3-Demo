@@ -20,7 +20,8 @@ import type {
 import { RESERVOIRS, STRATA } from "./reservoir";
 import { lonLatToLocal } from "./geo";
 
-const CENTER = { lon: 103.93, lat: 31.04 };
+// 取六个平台经纬度包络中心，使 3D 场区以本地原点居中。
+const CENTER = { lon: 103.9, lat: 31.0575 };
 
 const META: FieldMeta = {
   reservesGas: 1140,
@@ -475,13 +476,13 @@ function createWellsAndPlatforms(): {
       commissionedAt: platformSeed.commissionedAt,
     };
 
-    for (const wellSeed of platformSeed.wells) {
+    const wellCount = platformSeed.wells.length;
+    platformSeed.wells.forEach((wellSeed, index) => {
       const status = wellSeed.status ?? "normal";
-      const angle = range(0, Math.PI * 2);
-      const radius = range(60, 220);
+      // 同平台的井口沿场坪北侧排成一列，井距 16m，出气管统一朝南接入汇管。
       const pos = {
-        x: platformPos.x + Math.cos(angle) * radius,
-        z: platformPos.z + Math.sin(angle) * radius,
+        x: platformPos.x + (index - (wellCount - 1) / 2) * 16,
+        z: platformPos.z - 28,
       };
       const well: Well = {
         id: wellSeed.id,
@@ -492,7 +493,7 @@ function createWellsAndPlatforms(): {
         kind: "gas" as WellKind,
         status,
         depth: wellSeed.depth,
-        rotation: range(0, Math.PI * 2),
+        rotation: 0,
         metrics: metricsFor(wellSeed, status),
         history: historyForGas(wellSeed.gas, status),
         reservoirId: reservoirForDepth(wellSeed.depth),
@@ -504,7 +505,7 @@ function createWellsAndPlatforms(): {
       };
       wells.push(well);
       platform.wellIds.push(well.id);
-    }
+    });
 
     platforms.push(platform);
   }

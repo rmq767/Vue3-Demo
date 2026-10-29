@@ -10,11 +10,11 @@ export interface SceneMaterials {
   road: THREE.MeshStandardMaterial;
   tank: THREE.MeshStandardMaterial;
   sulfur: THREE.MeshStandardMaterial;
-  pipeGas: THREE.MeshStandardMaterial;
-  pipeWater: THREE.MeshStandardMaterial;
-  pipeSelected: THREE.MeshStandardMaterial;
-  pipeMaintenance: THREE.MeshStandardMaterial;
-  pipeStopped: THREE.MeshStandardMaterial;
+  pipeGas: THREE.MeshBasicMaterial;
+  pipeWater: THREE.MeshBasicMaterial;
+  pipeSelected: THREE.MeshBasicMaterial;
+  pipeMaintenance: THREE.MeshBasicMaterial;
+  pipeStopped: THREE.MeshBasicMaterial;
   selection: THREE.MeshBasicMaterial;
   alarm: THREE.MeshBasicMaterial;
   applyTheme(palette: ScenePalette): void;
@@ -42,13 +42,14 @@ export function createSceneMaterials(palette: ScenePalette): SceneMaterials {
   const road = standard(palette.road, 0.95, 0.02);
   const tank = standard(palette.tank, 0.38, 0.5);
   const sulfur = standard(palette.sulfur, 0.62, 0.18);
-  const pipeGas = standard(palette.pipeGas, 0.42, 0.4);
-  const pipeWater = standard(palette.pipeWater, 0.42, 0.4);
-  const pipeSelected = standard(palette.pipeSelected, 0.35, 0.3);
-  pipeSelected.emissive = new THREE.Color(palette.pipeSelected);
-  pipeSelected.emissiveIntensity = 0.18;
-  const pipeMaintenance = standard(palette.pipeMaintenance, 0.55, 0.18);
-  const pipeStopped = standard(palette.pipeStopped, 0.55, 0.12);
+  // 管线用不受光的纯色材质：颜色在任何底图和光照下保持一致，像制图线而非金属管。
+  const pipeGas = new THREE.MeshBasicMaterial({ color: new THREE.Color(palette.pipeGas) });
+  const pipeWater = new THREE.MeshBasicMaterial({ color: new THREE.Color(palette.pipeWater) });
+  const pipeSelected = new THREE.MeshBasicMaterial({ color: new THREE.Color(palette.pipeSelected) });
+  const pipeMaintenance = new THREE.MeshBasicMaterial({
+    color: new THREE.Color(palette.pipeMaintenance),
+  });
+  const pipeStopped = new THREE.MeshBasicMaterial({ color: new THREE.Color(palette.pipeStopped) });
 
   const selection = new THREE.MeshBasicMaterial({
     color: new THREE.Color(palette.selection),
@@ -77,7 +78,6 @@ export function createSceneMaterials(palette: ScenePalette): SceneMaterials {
     pipeGas.color.set(next.pipeGas);
     pipeWater.color.set(next.pipeWater);
     pipeSelected.color.set(next.pipeSelected);
-    pipeSelected.emissive.set(next.pipeSelected);
     pipeMaintenance.color.set(next.pipeMaintenance);
     pipeStopped.color.set(next.pipeStopped);
     selection.color.set(next.selection);
