@@ -13,7 +13,7 @@ import type {
   LayerKey,
   Stats,
 } from "../data/types";
-import { buildFeatureDetail, findPipeline, findStation, findWell } from "../data/field";
+import { buildFeatureDetail, findPipeline, findStation, findWell } from "../data/chuanxi";
 import { createSimulation } from "../data/simulation";
 import { createTourScript } from "../data/tourScript";
 import { createCesiumBase } from "./cesiumBase";
@@ -27,9 +27,8 @@ import { createTourController, type TourController } from "./tour";
 import { createFacilities } from "../scene/facilities";
 import { createPipelineSystem } from "../scene/pipeline";
 import { createEffects, type EffectsSystem } from "../scene/effects";
-import { createGroundBackdrop } from "../scene/backdrop";
-import { createIntroPlanet } from "../scene/planet";
 import { createWellTrajectory, type WellTrajectoryView } from "../scene/wellTrajectory";
+import { DEFAULT_THEME, getSceneTheme, type ThemeMode } from "../styles/tokens";
 
 export interface EngineElements {
   stage: HTMLElement;
@@ -47,10 +46,8 @@ export interface EngineCallbacks {
     playing?: boolean;
     chapter?: number;
     canResume?: boolean;
-    intro?: boolean;
   }) => void;
   onTourProgress?: (progress: number) => void;
-  onIntro?: (playing: boolean) => void;
   onCamera?: (hud: CameraHud) => void;
   onImagery?: (status: ImageryStatus) => void;
   onSceneMode?: (mode: "surface" | "trajectory") => void;
@@ -71,9 +68,9 @@ export function createEngine(
   field: FieldData,
   elements: EngineElements,
   callbacks: EngineCallbacks = {},
+  initialTheme: ThemeMode = DEFAULT_THEME,
 ): GisProEngineApi {
   const query = new URLSearchParams(window.location.search);
-  const demoMode = query.get("demo") !== "0";
   const exposeDebug = import.meta.env.DEV && query.get("debug") === "1";
   const requestedQuality = query.get("quality");
   const quality: QualityLevel =
@@ -84,52 +81,41 @@ export function createEngine(
   const cesiumBase = createCesiumBase({
     container: elements.cesium,
     field,
-    onImagery: () => {
-      // 主场景统一使用本地烘焙地形底图，在线影像仅作为后续可选增强。
-      callbacks.onImagery?.("local");
-    },
+    theme: initialTheme,
+    onImagery: (status) => callbacks.onImagery?.(status),
   });
-  const stage = createThreeStage(elements.three);
+  const stage = createThreeStage(elements.three, initialTheme);
   stage.setQuality(quality);
-  const backdrop = createGroundBackdrop();
-  stage.scene.add(backdrop.mesh);
-  const introPlanet = createIntroPlanet(stage.materials);
-  stage.scene.add(introPlanet.group);
+  const scenePalette = getSceneTheme(initialTheme);
 
   const fieldGroup = new THREE.Group();
   fieldGroup.name = "gis-field";
   stage.scene.add(fieldGroup);
   const groundHeight = (): number => 0;
 
-  const facilities = createFacilities(field, stage.materials, groundHeight);
+  const facilities = createFacilities(field, stage.materials, groundHeight, scenePalette);
   fieldGroup.add(facilities.group);
 
   const pipelines = createPipelineSystem(field, stage.materials, groundHeight);
   fieldGroup.add(pipelines.group);
 
-  const effects: EffectsSystem = createEffects(
-    field,
-    stage.materials,
-    groundHeight,
-    fieldGroup,
-    stage.scene,
-  );
+  const effects: EffectsSystem = createEffects(field, scenePalette, groundHeight, fieldGroup);
 
+  let activateLabel:
+    | ((id: string, kind: "well" | "station" | "pipeline" | "block") => void)
+    | null = null;
   const labels = createLabelSystem(
     elements.labels,
     fieldGroup,
     field,
     stage.scene,
+    (id, kind) => activateLabel?.(id, kind),
   );
-  const wellTrajectory: WellTrajectoryView = createWellTrajectory(field, stage.materials);
+  const wellTrajectory: WellTrajectoryView = createWellTrajectory(field, scenePalette);
   stage.scene.add(wellTrajectory.group);
 
   const cameraSync = createCameraSync(field);
-  const rig = createCameraRig(
-    cesiumBase.viewer,
-    field,
-    script.intro[0]?.state ?? script.overview,
-  );
+  const rig = createCameraRig(cesiumBase.viewer, field, script.overview);
 
   let orbit: OrbitController | null = null;
   let picker: Picker | null = null;
@@ -143,13 +129,7 @@ export function createEngine(
   let lastWellPick = { id: "", time: 0 };
   let cameraTween: gsap.core.Tween | null = null;
   let cameraAnimating = false;
-  let autoTourTimer = 0;
-  let autoAlarmTimer = 0;
-  let alarmResolveTimer = 0;
-  let introTimer = 0;
-  let userInteracted = false;
-  let alarmInterrupted = false;
-  let savedState: CameraState | null = null;
+  let activeAlarmIds = new Set<string>();
   // 记录点选聚焦前的视角，取消聚焦时回到这里，避免相机继续绕旧目标旋转。
   let focusOrigin: CameraState | null = null;
   let started = false;
@@ -178,44 +158,10 @@ export function createEngine(
     }
   };
 
-  const clearAutoTimers = (): void => {
-    window.clearTimeout(autoTourTimer);
-    window.clearTimeout(autoAlarmTimer);
-    autoTourTimer = 0;
-    autoAlarmTimer = 0;
-  };
-
-  const clearAlarmTimer = (): void => {
-    window.clearTimeout(alarmResolveTimer);
-    alarmResolveTimer = 0;
-  };
-
   const applyLabels = (visible: boolean, notify = true): void => {
     labelsVisible = visible;
     if (!trajectoryMode) labels.setEnabled(visible);
     if (notify) callbacks.onLayer?.("labels", visible);
-  };
-
-  const armAutoAlarm = (delay: number): void => {
-    autoAlarmTimer = window.setTimeout(() => {
-      if (userInteracted || destroyed) return;
-      // 巡演播放中不插播告警，避免章节（尤其管网）被井场告警抢镜。
-      if (tour?.isPlaying() || tour?.isIntro()) {
-        armAutoAlarm(8_000);
-        return;
-      }
-      replayAlarm();
-    }, delay);
-  };
-
-  const scheduleDemo = (): void => {
-    clearAutoTimers();
-    if (!demoMode || userInteracted || destroyed) return;
-    autoTourTimer = window.setTimeout(() => {
-      if (userInteracted || destroyed) return;
-      tour?.goTo(0);
-    }, 12_000);
-    armAutoAlarm(30_000);
   };
 
   const animateCamera = (
@@ -264,7 +210,7 @@ export function createEngine(
     if (!hadSelection) return;
     const origin = focusOrigin;
     focusOrigin = null;
-    if (tour?.isPlaying() || tour?.isIntro()) return;
+    if (tour?.isPlaying()) return;
     if (origin) {
       animateCamera(origin, 0.9);
       return;
@@ -273,6 +219,38 @@ export function createEngine(
     if (Math.hypot(rig.state.x, rig.state.z) > 24) {
       animateCamera(script.overview, 0.95);
     }
+  };
+
+  const focusBlock = (id: string): void => {
+    const block = field.blocks.find((item) => item.id === id);
+    if (!block) return;
+    tour?.stop();
+    focusOrigin = null;
+    selectedId = null;
+    selectedKind = null;
+    callbacks.onSelect?.(null);
+    labels.setSelected(null);
+    effects.setSelection("well", null);
+    pipelines.setSelected(null);
+    animateCamera(
+      {
+        x: block.center.x,
+        z: block.center.z,
+        height: 0,
+        heading: rig.state.heading,
+        pitch: -32,
+        range: Math.max(4200, block.radius * 2.8),
+      },
+      1.05,
+    );
+  };
+
+  activateLabel = (id, kind) => {
+    if (kind === "block") {
+      focusBlock(id);
+      return;
+    }
+    selectById(id, true);
   };
 
   const enterTourTrajectory = (wellId: string): void => {
@@ -286,6 +264,7 @@ export function createEngine(
     labels.setEnabled(false);
     callbacks.onLayer?.("labels", false);
     cesiumBase.setMarkerVisible(false);
+    cesiumBase.setUnderground(true);
     wellTrajectory.open(well);
     callbacks.onSceneMode?.("trajectory");
     callbacks.onTourTrajectory?.(true);
@@ -297,6 +276,7 @@ export function createEngine(
     trajectoryMode = false;
     wellTrajectory.close();
     fieldGroup.visible = true;
+    cesiumBase.setUnderground(false);
     labels.setEnabled(labelsVisible);
     callbacks.onLayer?.("labels", labelsVisible);
     callbacks.onSceneMode?.("surface");
@@ -318,11 +298,10 @@ export function createEngine(
     focusOrigin = null;
     wellTrajectory.close();
     fieldGroup.visible = true;
+    cesiumBase.setUnderground(false);
     labels.setEnabled(labelsVisible);
     callbacks.onLayer?.("labels", labelsVisible);
     callbacks.onSceneMode?.("surface");
-    userInteracted = true;
-    clearAutoTimers();
     animateCamera(script.overview, 1.15);
   };
 
@@ -334,26 +313,24 @@ export function createEngine(
     tourTrajectory = false;
     callbacks.onTourTrajectory?.(false);
     tour?.stop();
-    clearAutoTimers();
-    clearAlarmTimer();
     trajectoryMode = true;
     fieldGroup.visible = false;
     labels.setEnabled(false);
     callbacks.onLayer?.("labels", false);
     cesiumBase.setMarkerVisible(false);
+    cesiumBase.setUnderground(true);
     wellTrajectory.open(well);
     callbacks.onSceneMode?.("trajectory");
-    userInteracted = true;
     const sectionDepth = Math.max(1600, Math.ceil((well.depth + 180) / 100) * 100);
-    const sectionCenter = 200 + sectionDepth / 2;
+    const sectionCenter = -sectionDepth / 2 + 500;
     animateCamera(
       {
         x: well.pos.x,
         z: well.pos.z,
         height: sectionCenter,
         heading: -14,
-        pitch: -20,
-        range: 5200,
+        pitch: -22,
+        range: 15_000,
       },
       1.2,
     );
@@ -366,8 +343,6 @@ export function createEngine(
     if (wasTrajectory) closeWellTrajectory();
     if (wasTrajectory) focusOrigin = { ...script.overview };
     else if (!focusOrigin) focusOrigin = { ...rig.state };
-    userInteracted = true;
-    clearAutoTimers();
     tour?.stop();
     if (selectedId !== id) selectById(id, false);
     const target =
@@ -444,64 +419,17 @@ export function createEngine(
 
   const handleInteract = (): void => {
     if (destroyed) return;
-    window.clearTimeout(introTimer);
-    clearAutoTimers();
-    clearAlarmTimer();
-    userInteracted = true;
-    alarmInterrupted = true;
     if (cameraTween) {
       cameraTween.kill();
       cameraTween = null;
     }
     cameraAnimating = false;
-    if (tour?.isIntro()) {
-      tour.skipIntro();
-    } else if (tour?.isPlaying()) {
+    if (tour?.isPlaying()) {
       tour.stop();
     }
     orbit?.setAutoRotate(false);
     orbit?.sync();
     callbacks.onHover?.(null);
-  };
-
-  const replayAlarm = (): void => {
-    if (destroyed) return;
-    if (trajectoryMode) closeWellTrajectory();
-    if (tour?.isIntro()) tour.skipIntro();
-    tour?.stop();
-    // 告警演练不属于任何巡演章节，清掉高亮和进度，避免“管网章节却在看井”。
-    callbacks.onTour?.({ playing: false, chapter: -1, canResume: false });
-    tour?.resetProgress();
-    focusOrigin = null;
-    clearAutoTimers();
-    clearAlarmTimer();
-    userInteracted = true;
-    alarmInterrupted = false;
-    savedState = { ...rig.state };
-
-    simulation.resolveTarget(script.alarm.targetId);
-    const alarm = simulation.raiseAlarm(
-      script.alarm.targetId,
-      "critical",
-      script.alarm.message,
-      "well",
-    );
-    refreshAlarms();
-    effects.triggerAlarm(script.alarm.targetId);
-    selectById(script.alarm.targetId, false);
-    callbacks.onCaption?.(script.alarm.shot.label, script.alarm.shot.subtitle ?? "");
-    animateCamera(script.alarm.shot.state, script.alarm.shot.duration);
-
-    alarmResolveTimer = window.setTimeout(() => {
-      if (destroyed) return;
-      if (alarm) simulation.resolveAlarm(alarm.id);
-      effects.clearAlarm();
-      refreshAlarms();
-      if (!alarmInterrupted && savedState) {
-        animateCamera(savedState, 1.2);
-      }
-      savedState = null;
-    }, Math.max(2, script.alarm.resolveAfter) * 1000);
   };
 
   picker = createPicker({
@@ -530,29 +458,13 @@ export function createEngine(
         orbit?.sync();
       }
     },
-    onCue: (cue, shot, chapter) => {
+    onCue: (cue, shot) => {
       callbacks.onCaption?.(shot.label, shot.subtitle ?? "");
-      if (chapter?.id === "alarm") callbacks.onCaption?.(shot.label, shot.subtitle ?? "");
-      // 同一章节内切换镜头目标时（如 18 井 → 7 井），详情卡同步切换。
+      // 同一章节内切换镜头目标时，详情卡同步切换。
       if (shot.targetId) selectById(shot.targetId, false);
-    },
-    onIntro: (playing) => {
-      labels.setEnabled(!playing);
-      if (!playing) {
-        labelsVisible = true;
-        callbacks.onLayer?.("labels", true);
-      }
-      callbacks.onIntro?.(playing);
-      if (!playing && !destroyed) {
-        orbit?.sync();
-        orbit?.setAutoRotate(true);
-        if (!userInteracted) scheduleDemo();
-      }
     },
     onChapterStart: (chapter) => {
       focusOrigin = null;
-      // 用户切章时中止告警回放的镜头恢复，避免章节播到一半被拉回井口。
-      alarmInterrupted = true;
       if (chapter.trajectoryWellId) {
         enterTourTrajectory(chapter.trajectoryWellId);
       } else if (tourTrajectory) {
@@ -577,15 +489,13 @@ export function createEngine(
     frameDt = dt;
     elapsed += dt;
 
-    if (!cameraAnimating && !tour?.isPlaying() && !tour?.isIntro()) {
+    if (!cameraAnimating && !tour?.isPlaying()) {
       orbit?.update(dt);
     }
     rig.apply();
 
     const range = rig.state.range;
-    fieldGroup.visible = !trajectoryMode && range < 100_000;
-    backdrop.setVisible(range < 200_000);
-    introPlanet.setRange(range);
+    fieldGroup.visible = !trajectoryMode && range < 200_000;
     cesiumBase.setMarkerVisible(!trajectoryMode && range > 26_000);
 
     if (now - lastCameraUpdate > 480) {
@@ -602,13 +512,10 @@ export function createEngine(
   const postRender = (): void => {
     if (destroyed) return;
     cameraSync.sync(stage.camera, cesiumBase.viewer.camera);
-    introPlanet.setCamera(stage.camera.position);
     facilities.update(elapsed, frameDt);
     pipelines.update(elapsed);
     effects.update(elapsed);
     wellTrajectory.update(elapsed);
-    backdrop.update(elapsed);
-    introPlanet.update(elapsed);
 
     stage.render();
     labels.update(stage.camera, rig.state.range);
@@ -627,9 +534,6 @@ export function createEngine(
     if (!started) {
       started = true;
       callbacks.onReady?.();
-      introTimer = window.setTimeout(() => {
-        if (!destroyed) tour?.playIntro();
-      }, 420);
     }
   };
 
@@ -639,6 +543,11 @@ export function createEngine(
   const tickTimer = window.setInterval(() => {
     if (destroyed || document.hidden) return;
     const result = simulation.tick();
+    const activeAlarms = result.alarms.filter((alarm) => alarm.status !== "resolved");
+    const newAlarm = activeAlarms.find((alarm) => !activeAlarmIds.has(alarm.id));
+    activeAlarmIds = new Set(activeAlarms.map((alarm) => alarm.id));
+    if (newAlarm) effects.triggerAlarm(newAlarm.targetId);
+    if (!activeAlarms.length) effects.clearAlarm();
     pipelines.refresh(field);
     labels.updateField(field);
     labels.setAlarms(activeAlarmTargets());
@@ -666,7 +575,6 @@ export function createEngine(
   if (exposeDebug) {
     (window as unknown as { __af?: unknown }).__af = {
       stage,
-      introPlanet,
       rig,
       orbit,
       tour,
@@ -679,7 +587,6 @@ export function createEngine(
       handlePick,
       openWellTrajectory,
       closeWellTrajectory,
-      replayAlarm,
       ackAlarm: (id: string) => {
         simulation.ackAlarm(id);
         effects.clearAlarm();
@@ -693,8 +600,6 @@ export function createEngine(
     focusFeature,
     clearSelection,
     setLayer: (key: LayerKey, visible: boolean) => {
-      userInteracted = true;
-      clearAutoTimers();
       if (key === "wells") {
         facilities.wellGroup.visible = visible;
         labels.setKindEnabled("well", visible);
@@ -707,23 +612,24 @@ export function createEngine(
       } else if (key === "blocks") {
         facilities.blockGroup.visible = visible;
         labels.setKindEnabled("block", visible);
-      } else if (key === "arcs") {
-        pipelines.arcGroup.visible = visible;
       } else if (key === "labels") {
         applyLabels(visible);
       }
     },
-    setUnderground: () => {
-      // 主场景不再使用全局地下模式，井轨迹通过 openWellTrajectory 进入。
+    setTheme: (theme: ThemeMode) => {
+      const palette = getSceneTheme(theme);
+      cesiumBase.applyTheme(theme);
+      stage.applyTheme(theme);
+      facilities.applyTheme(palette);
+      pipelines.applyTheme(palette);
+      effects.applyTheme(palette);
+      wellTrajectory.applyTheme(palette);
     },
     openWellTrajectory,
     closeWellTrajectory,
     playTour: () => {
       if (trajectoryMode && !tourTrajectory) closeWellTrajectory();
       focusOrigin = null;
-      alarmInterrupted = true;
-      userInteracted = true;
-      clearAutoTimers();
       tour?.play();
     },
     pauseTour: () => {
@@ -733,39 +639,21 @@ export function createEngine(
     resumeTour: () => {
       if (trajectoryMode && !tourTrajectory) closeWellTrajectory();
       focusOrigin = null;
-      alarmInterrupted = true;
-      userInteracted = true;
-      clearAutoTimers();
       tour?.resume();
     },
     nextChapter: () => {
       if (trajectoryMode && !tourTrajectory) closeWellTrajectory();
       focusOrigin = null;
-      alarmInterrupted = true;
-      userInteracted = true;
-      clearAutoTimers();
       tour?.next();
     },
     goToChapter: (index: number) => {
       if (trajectoryMode && !tourTrajectory) closeWellTrajectory();
       focusOrigin = null;
-      alarmInterrupted = true;
-      userInteracted = true;
-      clearAutoTimers();
       tour?.goTo(index);
-    },
-    skipIntro: () => {
-      userInteracted = true;
-      clearAutoTimers();
-      tour?.skipIntro();
-      orbit?.sync();
-      orbit?.setAutoRotate(true);
     },
     resetView: () => {
       if (trajectoryMode) closeWellTrajectory();
       focusOrigin = null;
-      userInteracted = true;
-      clearAutoTimers();
       animateCamera(script.overview, 1.15);
     },
     ackAlarm: (id: string) => {
@@ -773,7 +661,6 @@ export function createEngine(
       effects.clearAlarm();
       refreshAlarms();
     },
-    replayAlarm,
     setQuality: (next: QualityLevel) => {
       stage.setQuality(next);
     },
@@ -788,10 +675,7 @@ export function createEngine(
     destroy: () => {
       if (destroyed) return;
       destroyed = true;
-      window.clearTimeout(introTimer);
       window.clearInterval(tickTimer);
-      clearAutoTimers();
-      clearAlarmTimer();
       document.removeEventListener("visibilitychange", handleVisibility);
       removePre();
       removePost();
@@ -805,8 +689,6 @@ export function createEngine(
       effects.dispose();
       pipelines.dispose();
       facilities.dispose();
-      backdrop.dispose();
-      introPlanet.dispose();
       cameraSync.destroy();
       stage.dispose();
       cesiumBase.destroy();

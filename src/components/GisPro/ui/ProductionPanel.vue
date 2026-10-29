@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import * as echarts from "echarts";
 import AfPanel from "./AfPanel.vue";
-import { TOKENS } from "../styles/tokens";
+import { TOKENS, getTheme, type ThemeDefinition } from "../styles/tokens";
 import { state } from "./store";
 
 const chartEl = ref<HTMLDivElement>();
@@ -14,85 +14,84 @@ const timeLabels = Array.from({ length: 24 }, (_, index) =>
 
 const ranking = computed(() => state.stats.blockRanking);
 
-function buildOption(): echarts.EChartsOption {
-  const oil = state.stats.history.oil;
+function withAlpha(color: string, alpha: number): string {
+  if (!color.startsWith("#") || color.length !== 7) return color;
+  const r = parseInt(color.slice(1, 3), 16);
+  const g = parseInt(color.slice(3, 5), 16);
+  const b = parseInt(color.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function buildOption(theme: ThemeDefinition): echarts.EChartsOption {
   const gas = state.stats.history.gas;
-  const oilMax = Math.max(...oil, 1) * 1.22;
-  const gasMax = Math.max(...gas, 1) * 1.22;
+  const sweetGas = state.stats.history.sweetGas ?? gas.map((value) => value * 0.884);
+  const gasMax = Math.max(...gas, ...sweetGas, 1) * 1.16;
+  const colors = theme.colors;
 
   return {
-    animationDuration: 650,
+    animationDuration: 500,
     animationEasing: "cubicOut",
     grid: { left: 4, right: 4, top: 12, bottom: 18 },
     tooltip: {
       trigger: "axis",
-      backgroundColor: "rgba(3,15,25,.96)",
-      borderColor: "rgba(61,225,255,.4)",
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
       borderWidth: 1,
       textStyle: {
-        color: TOKENS.colors.ink,
+        color: colors.text,
         fontSize: 11,
         fontFamily: TOKENS.fonts.body,
       },
       axisPointer: {
         type: "line",
-        lineStyle: { color: "rgba(61,225,255,.3)", width: 1 },
+        lineStyle: { color: colors.borderStrong, width: 1 },
       },
     },
     xAxis: {
       type: "category",
       data: timeLabels,
       boundaryGap: false,
-      axisLine: { lineStyle: { color: "rgba(61,225,255,.14)" } },
+      axisLine: { lineStyle: { color: colors.border } },
       axisTick: { show: false },
       axisLabel: {
-        color: TOKENS.colors.inkMuted,
+        color: colors.textMuted,
         fontSize: 9,
         interval: 5,
         fontFamily: TOKENS.fonts.number,
       },
     },
-    yAxis: [
-      {
-        type: "value",
-        show: false,
-        min: 0,
-        max: oilMax,
-      },
-      {
-        type: "value",
-        show: false,
-        min: 0,
-        max: gasMax,
-      },
-    ],
+    yAxis: {
+      type: "value",
+      show: false,
+      min: 0,
+      max: gasMax,
+    },
     series: [
       {
-        name: "原油 t/d",
+        name: "原料气 万m³/d",
         type: "line",
-        data: oil,
-        smooth: 0.38,
+        data: gas,
+        smooth: 0.32,
         symbol: "none",
-        lineStyle: { width: 1.8, color: TOKENS.colors.oil },
+        lineStyle: { width: 1.8, color: colors.gas },
         areaStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: "rgba(245,165,36,.26)" },
-            { offset: 1, color: "rgba(245,165,36,0)" },
+            { offset: 0, color: withAlpha(colors.gas, 0.2) },
+            { offset: 1, color: withAlpha(colors.gas, 0) },
           ]),
         },
       },
       {
-        name: "天然气 万m³/d",
+        name: "净化气 万m³/d",
         type: "line",
-        yAxisIndex: 1,
-        data: gas,
-        smooth: 0.38,
+        data: sweetGas,
+        smooth: 0.32,
         symbol: "none",
         lineStyle: {
           width: 1.2,
-          color: TOKENS.colors.gas,
+          color: colors.primary,
           type: "dashed",
-          opacity: 0.72,
+          opacity: 0.82,
         },
       },
     ],
@@ -100,7 +99,7 @@ function buildOption(): echarts.EChartsOption {
 }
 
 function updateChart(): void {
-  chart?.setOption(buildOption(), { notMerge: true });
+  chart?.setOption(buildOption(getTheme(state.theme)), { notMerge: true });
 }
 
 onMounted(() => {
@@ -110,7 +109,7 @@ onMounted(() => {
 });
 
 watch(
-  () => state.stats,
+  [() => state.stats, () => state.theme],
   () => updateChart(),
 );
 
@@ -121,23 +120,19 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <AfPanel title="生产态势" subtitle="24H">
-    <template #extra>
-      <span class="af-live-tag"><i></i> LIVE · 3S</span>
-    </template>
-
+  <AfPanel title="生产态势" subtitle="近24小时">
     <div class="af-prod">
       <div class="af-prod__legend">
-        <span><i class="is-oil"></i>原油产量</span>
-        <span><i class="is-gas"></i>天然气</span>
-        <em>t/d · 万m³/d</em>
+        <span><i class="is-gas"></i>原料气</span>
+        <span><i class="is-primary"></i>净化气</span>
+        <em>万m³/d</em>
       </div>
       <div ref="chartEl" class="af-prod__chart"></div>
 
       <div class="af-ranking">
         <div class="af-ranking__head">
-          <span>区块产量</span>
-          <em>t/d</em>
+          <span>区块日产气</span>
+          <em>万m³/d</em>
         </div>
         <div
           v-for="block in ranking"
@@ -153,7 +148,7 @@ onBeforeUnmount(() => {
               }"
             ></i>
           </div>
-          <strong>{{ block.oil.toFixed(0) }}</strong>
+          <strong>{{ (block.gas ?? 0).toFixed(1) }}</strong>
         </div>
         <div v-if="!ranking.length" class="af-empty">等待生产数据</div>
       </div>

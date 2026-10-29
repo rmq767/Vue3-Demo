@@ -31,7 +31,12 @@ const kindLabel = computed(() => {
   if (selected.value?.kind === "well") return "单井";
   if (selected.value?.kind === "station") return "站库";
   if (selected.value?.kind === "pipeline") return "管线";
-  return "概览";
+  return "气田概览";
+});
+
+const overviewText = computed(() => {
+  const stats = state.stats;
+  return `${stats.platformCount ?? 6} 个平台 / ${stats.totalWells} 口井 / ${stats.stationCount ?? 8} 座站库 · ${stats.pipelineCount ?? 12} 条管线`;
 });
 
 function focus(): void {
@@ -50,8 +55,8 @@ function closeDetail(): void {
 
 <template>
   <AfPanel
-    :title="selected?.name ?? '油田概览'"
-    :subtitle="selected ? `DETAIL / ${kindLabel}` : 'FIELD OVERVIEW'"
+    :title="selected?.name ?? '川西气田'"
+    :subtitle="selected ? kindLabel : '气田概览'"
   >
     <template #extra>
       <template v-if="selected">
@@ -61,13 +66,13 @@ function closeDetail(): void {
         <button
           class="af-icon-btn af-icon-btn--small"
           type="button"
-          :title="inTrajectory ? '返回油田' : '关闭详情'"
+          :title="inTrajectory ? '返回气田' : '关闭详情'"
           @click="closeDetail"
         >
           <AfIcon name="close" :size="14" />
         </button>
       </template>
-      <span v-else class="af-mini-tag">AURORA / 01</span>
+      <span v-else class="af-mini-tag">演示数据</span>
     </template>
 
     <template v-if="selected">
@@ -85,7 +90,7 @@ function closeDetail(): void {
               stroke-linecap="round"
             />
           </svg>
-          <span>24H TREND</span>
+          <span>近 24 小时</span>
         </div>
       </div>
 
@@ -126,7 +131,7 @@ function closeDetail(): void {
           </button>
         </template>
         <button class="af-btn af-btn--ghost" type="button" @click="closeDetail">
-          {{ inTrajectory ? "返回油田" : "关闭" }}
+          {{ inTrajectory ? "返回气田" : "关闭" }}
         </button>
       </div>
     </template>
@@ -138,29 +143,29 @@ function closeDetail(): void {
             <AfIcon name="spark" :size="18" />
           </span>
           <div>
-            <strong>极光油田 · 数字孪生</strong>
-            <p>地面油田 / 42 口井 / 8 座站库 · 12 条管线</p>
+            <strong>川西气田 · 生产运行监控</strong>
+            <p>{{ overviewText }}</p>
           </div>
         </div>
 
         <div class="af-overview__stats">
           <div>
             <span>探明储量</span>
-            <strong>1.286<small>亿吨</small></strong>
+            <strong>{{ state.stats.reserves.toLocaleString("zh-CN") }}<small>亿m³</small></strong>
           </div>
           <div>
-            <span>油藏压力</span>
-            <strong>24.6<small>MPa</small></strong>
+            <span>年产能</span>
+            <strong>{{ state.stats.annualCapacity ?? 20 }}<small>亿m³/a</small></strong>
           </div>
           <div>
-            <span>综合含水</span>
-            <strong>{{ state.stats.waterCut.toFixed(1) }}<small>%</small></strong>
+            <span>硫磺年产量</span>
+            <strong>{{ state.stats.sulfurAnnual ?? 13 }}<small>万吨/a</small></strong>
           </div>
         </div>
 
         <div class="af-reservoirs">
           <div class="af-reservoirs__head">
-            <span>油藏层位</span>
+            <span>气藏层位</span>
             <em>垂向示意</em>
           </div>
           <div v-for="reservoir in state.reservoirs" :key="reservoir.id" class="af-reservoir">
@@ -175,7 +180,7 @@ function closeDetail(): void {
 
         <div class="af-overview__hint">
           <AfIcon name="focus" :size="14" />
-          点击沙盘中的井 / 站 / 管线查看详情
+          点击沙盘中的井 / 站库 / 管线查看详情
         </div>
       </div>
     </template>

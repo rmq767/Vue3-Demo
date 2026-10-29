@@ -13,29 +13,30 @@ const items = computed(() => {
   const stats = state.stats;
   const openRate = stats.totalWells ? (stats.openWells / stats.totalWells) * 100 : 0;
   const activeAlarms = state.alarms.filter((alarm) => alarm.status !== "resolved").length;
+  const sweetGas = stats.totalSweetGas ?? stats.totalGas * 0.884;
   return [
-    {
-      key: "oil",
-      label: "日产油",
-      value: format(stats.totalOil, 0),
-      unit: "t/d",
-      tone: "oil",
-      hint: "轻质原油",
-    },
     {
       key: "gas",
       label: "日产气",
       value: format(stats.totalGas, 1),
       unit: "万m³/d",
       tone: "success",
-      hint: "伴生天然气",
+      hint: `${stats.openWells} 口开井`,
+    },
+    {
+      key: "sweet",
+      label: "外输净化气",
+      value: format(sweetGas, 1),
+      unit: "万m³/d",
+      tone: "primary",
+      hint: "脱硫净化后外输",
     },
     {
       key: "open",
       label: "开井率",
       value: format(openRate, 1),
       unit: "%",
-      tone: "primary",
+      tone: "info",
       hint: `${stats.openWells} / ${stats.totalWells} 口`,
     },
     {
@@ -43,8 +44,8 @@ const items = computed(() => {
       label: "集输里程",
       value: format(stats.pipelineKm, 1),
       unit: "km",
-      tone: "info",
-      hint: "12 条主干线",
+      tone: "primary",
+      hint: `${stats.pipelineCount ?? 0} 条管线`,
     },
     {
       key: "alarm",

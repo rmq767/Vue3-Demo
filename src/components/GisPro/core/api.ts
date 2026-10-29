@@ -1,4 +1,5 @@
 import type { CameraHud, LayerKey } from "../data/types";
+import type { ThemeMode } from "../styles/tokens";
 
 export type QualityLevel = "high" | "medium" | "low";
 
@@ -15,7 +16,7 @@ export interface GisProEngineApi {
   focusFeature(id: string): void;
   clearSelection(): void;
   setLayer(key: LayerKey, visible: boolean): void;
-  setUnderground(active: boolean): void;
+  setTheme(theme: ThemeMode): void;
   openWellTrajectory(id: string): void;
   closeWellTrajectory(): void;
   playTour(): void;
@@ -23,10 +24,8 @@ export interface GisProEngineApi {
   resumeTour(): void;
   nextChapter(): void;
   goToChapter(index: number): void;
-  skipIntro(): void;
   resetView(): void;
   ackAlarm(id: string): void;
-  replayAlarm(): void;
   setQuality(quality: QualityLevel): void;
   getCameraHud(): CameraHud;
   getDebugInfo(): DebugInfo;

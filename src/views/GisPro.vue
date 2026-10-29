@@ -6,7 +6,7 @@ export default { name: "GisPro" };
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import type { DebugInfo, GisProEngineApi, QualityLevel } from "@/components/GisPro/core/api";
 import { createEngine } from "@/components/GisPro/core/engine";
-import { createFieldData } from "@/components/GisPro/data/field";
+import { createFieldData } from "@/components/GisPro/data/chuanxi";
 import type { HoverInfo } from "@/components/GisPro/data/types";
 import { tokenCssVars } from "@/components/GisPro/styles/tokens";
 import AfIcon from "@/components/GisPro/ui/AfIcon.vue";
@@ -28,7 +28,6 @@ import {
   setFps,
   setHover,
   setImagery,
-  setIntro,
   setLayerState,
   setReady,
   setSceneMode,
@@ -44,7 +43,7 @@ import {
 const field = createFieldData();
 initStore(field);
 
-const tokenVars = tokenCssVars();
+const tokenVars = computed(() => tokenCssVars(state.theme));
 const stageEl = ref<HTMLDivElement>();
 const cesiumEl = ref<HTMLDivElement>();
 const threeEl = ref<HTMLDivElement>();
@@ -69,8 +68,7 @@ const emptyHover: HoverInfo = {
   meta: "",
 };
 
-const hudLive = computed(() => state.ready && !state.introPlaying);
-const showIntro = computed(() => state.ready && state.introPlaying);
+const hudLive = computed(() => state.ready);
 const showLoader = computed(() => !state.ready || Boolean(sceneError.value));
 
 const tooltipStyle = computed(() => {
@@ -87,15 +85,18 @@ const cameraHeight = computed(() => {
 });
 
 const imageryText = computed(() => {
-  if (state.imagery === "esri") return "ESRI";
-  if (state.imagery === "gaode") return "GAODE";
-  if (state.imagery === "local") return "LOCAL";
-  if (state.imagery === "offline") return "GRID";
-  return "LINK";
+  if (state.imagery === "esri") return "卫星影像";
+  if (state.imagery === "gaode") return "高德影像";
+  if (state.imagery === "local") return "本地";
+  if (state.imagery === "offline") return "离线网格";
+  return "连接中";
 });
 
-const activeLayerCount = computed(
-  () => Object.values(state.layers).filter(Boolean).length,
+const visibleLayerCount = computed(
+  () =>
+    (["wells", "stations", "pipelines", "blocks", "labels"] as const).filter(
+      (key) => state.layers[key],
+    ).length,
 );
 
 function applyScale(): void {
@@ -145,8 +146,7 @@ function onKeydown(event: KeyboardEvent): void {
 
   if (event.code === "Space") {
     event.preventDefault();
-    if (state.introPlaying) actions.skipIntro();
-    else if (state.tourPlaying) actions.pauseTour();
+    if (state.tourPlaying) actions.pauseTour();
     else actions.playTour();
     return;
   }
@@ -204,10 +204,6 @@ onMounted(() => {
             canResume: patch.canResume,
           }),
         onTourProgress: (progress) => setTourProgress(progress),
-        onIntro: (playing) => {
-          setIntro(playing, playing);
-          if (!playing) setCaption("", "");
-        },
         onCamera: (camera) => setCamera(camera),
         onImagery: (imagery) => setImagery(imagery),
         onSceneMode: (mode) => setSceneMode(mode),
@@ -216,6 +212,7 @@ onMounted(() => {
         onLayer: (key, visible) => setLayerState(key, visible),
         onFps: (fps) => setFps(fps),
       },
+      state.theme,
     );
     bindEngine(engine);
     if (debugMode) {
@@ -253,17 +250,13 @@ onBeforeUnmount(() => {
       'is-trajectory': state.sceneMode === 'trajectory',
       'is-tour-trajectory': state.tourTrajectory,
     }"
+    :data-theme="state.theme"
     :style="tokenVars"
   >
-    <div class="af-stage" ref="stageEl" aria-label="极光油田智慧生产数字孪生大屏">
+    <div class="af-stage" ref="stageEl" aria-label="川西气田生产运行监控大屏">
       <div class="af-cesium" ref="cesiumEl"></div>
       <div class="af-three" ref="threeEl"></div>
       <div class="af-labels" ref="labelsEl"></div>
-      <div class="af-atmosphere" aria-hidden="true">
-        <div class="af-atmosphere__grid"></div>
-        <div class="af-atmosphere__scan"></div>
-        <div class="af-atmosphere__vignette"></div>
-      </div>
 
       <div class="af-hud" :class="{ 'is-live': hudLive }">
         <HudHeader @fullscreen="toggleFullscreen" />
@@ -284,7 +277,7 @@ onBeforeUnmount(() => {
           class="af-trajectory-bar"
         >
           <div class="af-trajectory-bar__title">
-            <span>WELL TRAJECTORY / 单井井轨迹</span>
+            <span>单井井轨迹</span>
             <strong>{{ state.selected?.name ?? "单井" }}</strong>
             <em>
               {{ state.selected?.meta.find((item) => item.label === "井深")?.value ?? "" }}
@@ -297,7 +290,7 @@ onBeforeUnmount(() => {
             地层柱 / 井眼轨迹 / 油藏层带
           </div>
           <button type="button" class="af-btn af-btn--ghost" @click="actions.closeWellTrajectory()">
-            <AfIcon name="reset" :size="14" /> 返回油田
+            <AfIcon name="reset" :size="14" /> 返回气田
           </button>
         </div>
 
@@ -308,23 +301,19 @@ onBeforeUnmount(() => {
         <footer class="af-status">
           <div class="af-status__left">
             <span class="af-status__led"></span>
-            <span>107.5500°E / 37.3500°N</span>
+            <span>103.9300°E / 31.0400°N</span>
             <i></i>
-            <span>极光油田 · 演示数据</span>
+            <span>川西气田 · 演示数据</span>
           </div>
           <div class="af-status__center">
-            <span>AURORA FIELD DIGITAL TWIN</span>
+            <span>川西气田生产运行监控</span>
           </div>
           <div class="af-status__right">
-            <span>相机 {{ cameraHeight }}</span>
+            <span>视高 {{ cameraHeight }}</span>
             <i></i>
-            <span>图层 {{ activeLayerCount }} / 6</span>
+            <span>图层 {{ visibleLayerCount }} / 5</span>
             <i></i>
             <span>底图 {{ imageryText }}</span>
-            <i></i>
-            <span>{{ state.fps.toFixed(0) }} FPS</span>
-            <i></i>
-            <span>ENGINE v1.0</span>
           </div>
         </footer>
 
@@ -342,10 +331,10 @@ onBeforeUnmount(() => {
         </transition>
 
         <div v-if="debugMode && debug" class="af-debug">
-          <div><span>FPS</span><strong>{{ debug.fps }}</strong></div>
-          <div><span>CALLS</span><strong>{{ debug.drawCalls }}</strong></div>
-          <div><span>TRIS</span><strong>{{ debug.triangles.toLocaleString() }}</strong></div>
-          <div><span>LABELS</span><strong>{{ debug.labels }}</strong></div>
+          <div><span>帧率</span><strong>{{ debug.fps }}</strong></div>
+          <div><span>绘制</span><strong>{{ debug.drawCalls }}</strong></div>
+          <div><span>三角面</span><strong>{{ debug.triangles.toLocaleString() }}</strong></div>
+          <div><span>标签</span><strong>{{ debug.labels }}</strong></div>
           <div class="af-debug__quality">
             <button
               v-for="level in qualityLevels"
@@ -361,31 +350,14 @@ onBeforeUnmount(() => {
       </div>
 
       <transition name="af-fade">
-        <div v-if="showIntro" class="af-intro">
-          <div class="af-intro__copy">
-            <span class="af-intro__eyebrow">AURORA FIELD / DIGITAL TWIN</span>
-            <h1>极光油田</h1>
-            <h2>智慧生产指挥中心</h2>
-            <div class="af-intro__line"></div>
-            <p>油田数字孪生 · 42 口井 · 8 座站库 · 12 条集输管线</p>
-          </div>
-          <button class="af-intro__skip" type="button" @click="actions.skipIntro()">
-            跳过开场 <AfIcon name="arrow-right" :size="14" />
-          </button>
-        </div>
-      </transition>
-
-      <transition name="af-fade">
         <div v-if="showLoader" class="af-loader">
           <div class="af-loader__brand">
-            <span class="af-loader__orbit"></span>
-            <span class="af-loader__orbit af-loader__orbit--two"></span>
-            <i></i>
+            <AfIcon name="well" :size="26" />
           </div>
-          <strong>AURORA FIELD</strong>
-          <h2 v-if="!sceneError">正在构建数字孪生场景</h2>
+          <strong>川西气田</strong>
+          <h2 v-if="!sceneError">正在加载三维场景</h2>
           <h2 v-else>三维引擎初始化失败</h2>
-          <p v-if="!sceneError">INITIALIZING GEOSPATIAL TWIN</p>
+          <p v-if="!sceneError">卫星影像 · 场站模型 · 管网数据</p>
           <p v-else>{{ sceneError }}</p>
           <div v-if="!sceneError" class="af-loader__bar">
             <span></span>

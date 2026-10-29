@@ -4,33 +4,18 @@ import AfIcon from "./AfIcon.vue";
 import { actions, state } from "./store";
 
 const chapters = [
-  { label: "全景", sub: "OVERVIEW" },
-  { label: "井场", sub: "WELL PAD" },
-  { label: "井轨迹", sub: "WELL LOG" },
-  { label: "管网", sub: "PIPELINE" },
-  { label: "站库", sub: "STATION" },
+  { label: "全景" },
+  { label: "平台" },
+  { label: "井轨迹" },
+  { label: "管网" },
+  { label: "站库" },
 ];
 
-const playIcon = computed(() => {
-  if (state.introPlaying) return "next";
-  return state.tourPlaying ? "pause" : "play";
-});
-
-const playLabel = computed(() => {
-  if (state.introPlaying) return "跳过";
-  return state.tourPlaying ? "暂停" : "播放";
-});
-
-const playTitle = computed(() => {
-  if (state.introPlaying) return "跳过开场";
-  return state.tourPlaying ? "暂停巡演" : "播放巡演";
-});
+const playIcon = computed(() => (state.tourPlaying ? "pause" : "play"));
+const playLabel = computed(() => (state.tourPlaying ? "暂停" : "播放"));
+const playTitle = computed(() => (state.tourPlaying ? "暂停巡演" : "播放巡演"));
 
 function togglePlay(): void {
-  if (state.introPlaying) {
-    actions.skipIntro();
-    return;
-  }
   if (state.tourPlaying) {
     actions.pauseTour();
   } else {
@@ -76,9 +61,7 @@ function togglePlay(): void {
           }"
           @click="actions.goToChapter(index)"
         >
-          <span class="af-tour__num">0{{ index + 1 }}</span>
           <span class="af-tour__label">{{ chapter.label }}</span>
-          <small>{{ chapter.sub }}</small>
         </button>
       </div>
 

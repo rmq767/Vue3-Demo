@@ -45,14 +45,14 @@ function scheduleHide(): void {
       class="af-search__input"
       type="text"
       name="gispro-feature-search"
-      placeholder="搜索井 / 站 / 管线"
+      placeholder="搜索井 / 站库 / 管线"
       aria-label="搜索井、站库或管线"
       autocomplete="off"
       @focus="show"
       @blur="scheduleHide"
       @keydown.esc="open = false"
     />
-    <span class="af-search__hint">SEARCH</span>
+    <span class="af-search__hint">搜索</span>
 
     <transition name="af-drop">
       <div v-if="open && query.trim()" class="af-search__drop">

@@ -1,8 +1,8 @@
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import type { FieldData, Station, Well } from "../data/types";
+import type { FieldData, Station } from "../data/types";
 import type { SceneMaterials } from "../fx/materials";
-import { TOKENS } from "../styles/tokens";
+import type { ScenePalette } from "../styles/tokens";
 
 export interface Facilities {
   group: THREE.Group;
@@ -11,10 +11,9 @@ export interface Facilities {
   blockGroup: THREE.Group;
   pickables: THREE.Object3D[];
   update(time: number, dt: number): void;
+  applyTheme(palette: ScenePalette): void;
   dispose(): void;
 }
-
-const PUMP_SCALE = 1.35;
 
 function transform(
   geometry: THREE.BufferGeometry,
@@ -77,90 +76,15 @@ function merge(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
   return result;
 }
 
-function statusColor(well: Well): THREE.Color {
-  if (well.status === "warning") return new THREE.Color(TOKENS.colors.warning);
-  if (well.status === "offline") return new THREE.Color(TOKENS.colors.inkMuted);
-  return new THREE.Color(TOKENS.colors.primary);
-}
-
-function buildPumpStaticGeometry(): THREE.BufferGeometry {
+function buildWellheadGeometry(): THREE.BufferGeometry {
   return merge([
-    box(19, 0.5, 7.5, 0, 0.25, 0),
-    box(16, 1.25, 6.2, 0, 0.95, 0),
-    // A 字支架
-    box(0.75, 7.2, 0.75, -1.4, 4.3, 2.5, 0.1, 0, 0.33),
-    box(0.75, 7.2, 0.75, -1.4, 4.3, -2.5, -0.1, 0, 0.33),
-    box(0.75, 7.2, 0.75, 3.0, 4.3, 2.4, 0.1, 0, -0.28),
-    box(0.75, 7.2, 0.75, 3.0, 4.3, -2.4, -0.1, 0, -0.28),
-    box(3.6, 1.1, 4.8, 0.8, 7.25, 0),
-    // 减速箱与电机
-    box(2.6, 2.2, 2.5, -2.6, 4.8, 0),
-    box(3.6, 2.5, 2.4, -6.6, 2.2, 0),
-    cylinder(0.8, 0.8, 2.6, 12, -6.6, 2.2, 1.7, Math.PI / 2),
-    // 井口
-    cylinder(0.7, 0.9, 2.2, 10, 9.4, 1.6, 0),
-    box(1.6, 0.55, 1.6, 9.4, 2.8, 0),
-    box(0.35, 4.2, 0.35, 9.4, 4.2, 0),
-    // 防护栏细节
-    box(0.18, 1.6, 7.4, -9.2, 1.4, 0),
-    box(0.18, 1.6, 7.4, 6.5, 1.4, 0),
-  ]);
-}
-
-function buildBeamGeometry(): THREE.BufferGeometry {
-  return merge([
-    box(19, 0.9, 1.5, 0, 0, 0),
-    box(3.4, 3.4, 1.7, 9.0, -1.25, 0),
-    box(0.35, 4.4, 0.35, 9.3, -3.5, 0),
-    box(4.3, 1.9, 1.5, -6.3, -1.15, 0),
-    box(1.1, 2.2, 1.2, 0, -1.2, 0),
-  ]);
-}
-
-function buildCrankGeometry(): THREE.BufferGeometry {
-  const disc = transform(
-    new THREE.CylinderGeometry(1.7, 1.7, 1.2, 18),
-    0,
-    -4.6,
-    0,
-    Math.PI / 2,
-    0,
-    0,
-  );
-  return merge([
-    box(1.15, 5.2, 1.25, 0, -2.5, 0),
-    disc,
-    box(2.8, 0.9, 1.2, 0, -4.6, 0),
-  ]);
-}
-
-function buildTankGeometry(): THREE.BufferGeometry {
-  const body = new THREE.CylinderGeometry(14, 14, 22, 28, 1, false);
-  body.translate(0, 11, 0);
-  const cap = new THREE.SphereGeometry(14, 28, 12, 0, Math.PI * 2, 0, Math.PI / 2);
-  cap.scale(1, 0.32, 1);
-  cap.translate(0, 22, 0);
-  const rim = new THREE.TorusGeometry(14.1, 0.28, 5, 36);
-  rim.rotateX(Math.PI / 2);
-  rim.translate(0, 22, 0);
-  return merge([body, cap, rim]);
-}
-
-function buildBuildingGeometry(): THREE.BufferGeometry {
-  return merge([
-    box(26, 9.6, 17, 0, 4.8, 0),
-    box(27.5, 0.7, 18.5, 0, 9.85, 0),
-    box(0.18, 4.6, 3.4, 13.05, 2.4, 0),
-  ]);
-}
-
-function buildRackGeometry(): THREE.BufferGeometry {
-  return merge([
-    box(0.7, 7.6, 0.7, -6, 3.8, 0),
-    box(0.7, 7.6, 0.7, 6, 3.8, 0),
-    cylinder(0.32, 0.32, 12.5, 8, 0, 4.2, 0, 0, 0, Math.PI / 2),
-    cylinder(0.32, 0.32, 12.5, 8, 0, 5.2, 1.1, 0, 0, Math.PI / 2),
-    cylinder(0.32, 0.32, 12.5, 8, 0, 6.2, -1.1, 0, 0, Math.PI / 2),
+    cylinder(3.4, 4.0, 1.2, 12, 0, 0.6, 0),
+    cylinder(1.2, 1.5, 5.4, 10, 0, 3.9, 0),
+    box(4.2, 0.9, 4.2, 0, 7.0, 0),
+    cylinder(0.8, 0.8, 4.4, 8, 2.6, 7.1, 0, 0, 0, Math.PI / 2),
+    cylinder(0.8, 0.8, 4.4, 8, -2.6, 7.1, 0, 0, 0, Math.PI / 2),
+    box(1.1, 3.2, 1.1, 0, 9.2, 0),
+    cylinder(0.6, 0.8, 2.0, 8, 0, 11.2, 0),
   ]);
 }
 
@@ -183,71 +107,17 @@ function instanced(
   return mesh;
 }
 
-function buildRoads(
-  field: FieldData,
-  heightAt: (x: number, z: number) => number,
-): THREE.Group {
-  const group = new THREE.Group();
-  group.name = "roads";
-  const central = field.stations[0];
-  const roadMaterial = new THREE.MeshStandardMaterial({
-    color: 0x303b3e,
-    roughness: 0.92,
-    metalness: 0.03,
-  });
-  const allPositions: number[] = [];
-
-  field.stations.slice(1).forEach((station, index) => {
-    const mid = {
-      x: (station.pos.x + central.pos.x) / 2 + (index % 2 === 0 ? 120 : -120),
-      z: (station.pos.z + central.pos.z) / 2 + (index % 2 === 0 ? 80 : -80),
-    };
-    const curve = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(station.pos.x, heightAt(station.pos.x, station.pos.z) + 2, station.pos.z),
-      new THREE.Vector3(mid.x, heightAt(mid.x, mid.z) + 2, mid.z),
-      new THREE.Vector3(central.pos.x, heightAt(central.pos.x, central.pos.z) + 2, central.pos.z),
-    ]);
-    const samples = 40;
-    const width = 8;
-    for (let i = 0; i < samples; i += 1) {
-      const t0 = i / samples;
-      const t1 = (i + 1) / samples;
-      const p0 = curve.getPoint(t0);
-      const p1 = curve.getPoint(t1);
-      const tangent = p1.clone().sub(p0).setY(0).normalize();
-      const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).multiplyScalar(width / 2);
-      const a = p0.clone().add(normal);
-      const b = p0.clone().sub(normal);
-      const c = p1.clone().add(normal);
-      const d = p1.clone().sub(normal);
-      a.y = heightAt(a.x, a.z) + 2.2;
-      b.y = heightAt(b.x, b.z) + 2.2;
-      c.y = heightAt(c.x, c.z) + 2.2;
-      d.y = heightAt(d.x, d.z) + 2.2;
-      allPositions.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
-      allPositions.push(b.x, b.y, b.z, d.x, d.y, d.z, c.x, c.y, c.z);
-    }
-
-  });
-
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.Float32BufferAttribute(allPositions, 3));
-  geometry.computeVertexNormals();
-  const mesh = new THREE.Mesh(geometry, roadMaterial);
-  mesh.receiveShadow = true;
-  group.add(mesh);
-  return group;
-}
-
-function buildBlockBoundaries(field: FieldData): THREE.Group {
+function buildBlockBoundaries(field: FieldData, palette: ScenePalette): {
+  group: THREE.Group;
+  materials: THREE.LineDashedMaterial[];
+} {
   const group = new THREE.Group();
   group.name = "block-boundaries";
-  const colors = TOKENS.colors as Record<string, string>;
+  const materials: THREE.LineDashedMaterial[] = [];
 
-  field.blocks.forEach((block) => {
-    const color = new THREE.Color(colors[block.colorKey] ?? TOKENS.colors.primary);
+  for (const block of field.blocks) {
     const points: THREE.Vector3[] = [];
-    const count = 90;
+    const count = 96;
     for (let i = 0; i <= count; i += 1) {
       const angle = (i / count) * Math.PI * 2;
       points.push(
@@ -258,77 +128,116 @@ function buildBlockBoundaries(field: FieldData): THREE.Group {
         ),
       );
     }
-    const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
-    const lineMaterial = new THREE.LineDashedMaterial({
-      color,
+    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    const material = new THREE.LineDashedMaterial({
+      color: new THREE.Color(palette.blockLine),
       transparent: true,
-      opacity: 0.36,
-      dashSize: 28,
-      gapSize: 18,
+      opacity: 0.45,
+      dashSize: 42,
+      gapSize: 24,
       depthWrite: false,
     });
-    const line = new THREE.Line(lineGeometry, lineMaterial);
+    materials.push(material);
+    const line = new THREE.Line(geometry, material);
     line.computeLineDistances();
+    line.name = `block-${block.id}`;
     group.add(line);
+  }
 
-    const fill = new THREE.Mesh(
-      new THREE.CircleGeometry(block.radius, 90).rotateX(-Math.PI / 2),
-      new THREE.MeshBasicMaterial({
-        color,
-        transparent: true,
-        opacity: 0.022,
-        depthWrite: false,
-        side: THREE.DoubleSide,
-      }),
-    );
-    fill.position.set(block.center.x, 1.2, block.center.z);
-    group.add(fill);
-  });
-
-  return group;
+  return { group, materials };
 }
 
-function buildRocks(
-  materials: SceneMaterials,
-  heightAt: (x: number, z: number) => number,
-): THREE.InstancedMesh {
-  const count = 180;
-  const geometry = new THREE.IcosahedronGeometry(1, 0);
-  const matrices: THREE.Matrix4[] = [];
-  const quaternion = new THREE.Quaternion();
-  const scale = new THREE.Vector3();
-  const position = new THREE.Vector3();
-  let seed = 907;
-  const random = () => {
-    seed = (seed * 1664525 + 1013904223) >>> 0;
-    return seed / 4294967296;
-  };
-  for (let i = 0; i < count; i += 1) {
-    const angle = random() * Math.PI * 2;
-    const radius = 150 + random() * 1450;
-    const x = Math.cos(angle) * radius;
-    const z = Math.sin(angle) * radius;
-    if (z > Math.abs(x) * 1.04) {
-      i -= 1;
-      continue;
-    }
-    const size = 2 + random() * 7;
-    position.set(x, heightAt(x, z) + size * 0.3, z);
-    quaternion.setFromEuler(new THREE.Euler(random(), random() * Math.PI, random()));
-    scale.set(size, size * (0.4 + random() * 0.5), size * (0.7 + random() * 0.8));
-    matrices.push(new THREE.Matrix4().compose(position, quaternion, scale));
-  }
-  const mesh = instanced(geometry, materials.rock, matrices);
+function addPart(
+  parent: THREE.Object3D,
+  geometry: THREE.BufferGeometry,
+  material: THREE.Material,
+  position: [number, number, number],
+  station: Station,
+  pickables: THREE.Object3D[],
+  rotationY = 0,
+): THREE.Mesh {
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.position.set(position[0], position[1], position[2]);
+  mesh.rotation.y = rotationY;
   mesh.castShadow = true;
   mesh.receiveShadow = true;
-  mesh.name = "rocks";
+  mesh.userData.id = station.id;
+  mesh.userData.kind = "station";
+  parent.add(mesh);
+  pickables.push(mesh);
   return mesh;
+}
+
+function createStation(
+  station: Station,
+  materials: SceneMaterials,
+  heightAt: (x: number, z: number) => number,
+  pickables: THREE.Object3D[],
+): THREE.Group {
+  const group = new THREE.Group();
+  group.name = `station-${station.id}`;
+  group.position.set(station.pos.x, heightAt(station.pos.x, station.pos.z), station.pos.z);
+  group.rotation.y = station.rotation;
+
+  const pad = new THREE.Mesh(new THREE.CylinderGeometry(124, 132, 2.2, 32), materials.concrete);
+  pad.position.y = -1.0;
+  pad.receiveShadow = true;
+  group.add(pad);
+
+  if (station.type === "中心控制站") {
+    addPart(group, new THREE.BoxGeometry(110, 20, 60), materials.building, [0, 10, 0], station, pickables);
+    addPart(group, new THREE.BoxGeometry(118, 1.2, 68), materials.roof, [0, 20.6, 0], station, pickables);
+    addPart(group, new THREE.BoxGeometry(42, 8, 24), materials.building, [-74, 4, -24], station, pickables);
+    addPart(group, new THREE.BoxGeometry(46, 0.8, 28), materials.roof, [-74, 8.4, -24], station, pickables);
+    addPart(group, new THREE.CylinderGeometry(4, 4.6, 42, 12), materials.steelDark, [66, 21, -18], station, pickables);
+    addPart(group, new THREE.CylinderGeometry(0.5, 0.5, 18, 8), materials.steel, [66, 51, -18], station, pickables);
+  } else if (station.type === "脱硫站") {
+    for (const x of [-20, 20]) {
+      addPart(group, new THREE.CylinderGeometry(7, 7.8, 44, 18), materials.tank, [x, 22, 0], station, pickables);
+      addPart(group, new THREE.CylinderGeometry(7.4, 7.4, 1.2, 18), materials.steelDark, [x, 44.4, 0], station, pickables);
+    }
+    addPart(group, new THREE.CylinderGeometry(10, 10, 22, 18), materials.sulfur, [42, 11, 26], station, pickables);
+    addPart(group, new THREE.CylinderGeometry(6.4, 6.4, 1.4, 18), materials.steelDark, [42, 22.6, 26], station, pickables);
+    const vessel = new THREE.CylinderGeometry(5, 5, 30, 14);
+    vessel.rotateZ(Math.PI / 2);
+    addPart(group, vessel, materials.tank, [0, 8, -28], station, pickables);
+    addPart(group, new THREE.BoxGeometry(42, 10, 22), materials.building, [0, 5, -52], station, pickables);
+    addPart(group, new THREE.BoxGeometry(46, 0.8, 26), materials.roof, [0, 10.4, -52], station, pickables);
+    for (let i = 0; i < 2; i += 1) {
+      addPart(group, new THREE.BoxGeometry(0.8, 7, 0.8), materials.steel, [-8 + i * 16, 3.5, 26], station, pickables);
+      addPart(group, new THREE.CylinderGeometry(0.5, 0.5, 22, 8), materials.steel, [-8 + i * 16, 7, 26], station, pickables, Math.PI / 2);
+    }
+  } else if (station.type === "外输首站") {
+    for (const x of [-34, 0, 34]) {
+      addPart(group, new THREE.BoxGeometry(18, 4, 10), materials.steel, [x, 2, 12], station, pickables);
+    }
+    addPart(group, new THREE.BoxGeometry(38, 9, 18), materials.building, [0, 4.5, -30], station, pickables);
+    addPart(group, new THREE.BoxGeometry(42, 0.8, 22), materials.roof, [0, 9.4, -30], station, pickables);
+    const manifold = new THREE.CylinderGeometry(0.9, 0.9, 86, 8);
+    manifold.rotateZ(Math.PI / 2);
+    addPart(group, manifold, materials.pipeGas, [0, 5.5, -4], station, pickables);
+  } else if (station.type === "水处理站") {
+    for (const x of [-38, 0, 38]) {
+      addPart(group, new THREE.CylinderGeometry(12, 12, 16, 20), materials.tank, [x, 8, 18], station, pickables);
+    }
+    addPart(group, new THREE.CylinderGeometry(8, 9, 6, 20), materials.concrete, [0, 3, -24], station, pickables);
+    addPart(group, new THREE.BoxGeometry(30, 8, 16), materials.building, [0, 4, -44], station, pickables);
+    addPart(group, new THREE.BoxGeometry(34, 0.8, 20), materials.roof, [0, 8.4, -44], station, pickables);
+  } else {
+    addPart(group, new THREE.BoxGeometry(54, 10, 26), materials.building, [0, 5, -18], station, pickables);
+    addPart(group, new THREE.BoxGeometry(58, 1, 30), materials.roof, [0, 10.4, -18], station, pickables);
+    addPart(group, new THREE.BoxGeometry(34, 8, 18), materials.building, [48, 4, 12], station, pickables);
+    addPart(group, new THREE.BoxGeometry(38, 0.8, 22), materials.roof, [48, 8.4, 12], station, pickables);
+  }
+
+  return group;
 }
 
 export function createFacilities(
   field: FieldData,
   materials: SceneMaterials,
   heightAt: (x: number, z: number) => number,
+  palette: ScenePalette,
 ): Facilities {
   const group = new THREE.Group();
   group.name = "facilities";
@@ -336,362 +245,90 @@ export function createFacilities(
   wellGroup.name = "wells";
   const stationGroup = new THREE.Group();
   stationGroup.name = "stations";
-  const blockGroup = buildBlockBoundaries(field);
+  const blockGroup = new THREE.Group();
+  blockGroup.name = "blocks";
   group.add(wellGroup);
   group.add(stationGroup);
   group.add(blockGroup);
   const pickables: THREE.Object3D[] = [];
+  const localMaterials: THREE.Material[] = [];
 
-  const pumpStaticGeometry = buildPumpStaticGeometry().scale(PUMP_SCALE, PUMP_SCALE, PUMP_SCALE);
-  const beamGeometry = buildBeamGeometry().scale(PUMP_SCALE, PUMP_SCALE, PUMP_SCALE);
-  const crankGeometry = buildCrankGeometry().scale(PUMP_SCALE, PUMP_SCALE, PUMP_SCALE);
-  const wellIds = field.wells.map((well) => well.id);
-
-  const staticMatrices: THREE.Matrix4[] = [];
-  const beamMatrices: THREE.Matrix4[] = [];
-  const crankMatrices: THREE.Matrix4[] = [];
-  const ringMatrices: THREE.Matrix4[] = [];
-  const padMatrices: THREE.Matrix4[] = [];
-  const pumpMeta: { well: Well; top: number }[] = [];
-  const ringColors: THREE.Color[] = [];
-
-  for (const well of field.wells) {
-    const top = heightAt(well.pos.x, well.pos.z);
-    pumpMeta.push({ well, top });
-    const base = new THREE.Matrix4().compose(
-      new THREE.Vector3(well.pos.x, top, well.pos.z),
-      new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), well.rotation),
-      new THREE.Vector3(1, 1, 1),
-    );
-    staticMatrices.push(base);
-
-    const beam = new THREE.Matrix4().compose(
-      new THREE.Vector3(well.pos.x, top + 6.8 * PUMP_SCALE, well.pos.z),
-      new THREE.Quaternion().setFromEuler(new THREE.Euler(0, well.rotation, 0.12, "YXZ")),
-      new THREE.Vector3(1, 1, 1),
-    );
-    beamMatrices.push(beam);
-
-    const crank = new THREE.Matrix4().compose(
-      new THREE.Vector3(well.pos.x, top + 2.8 * PUMP_SCALE, well.pos.z),
-      new THREE.Quaternion().setFromEuler(new THREE.Euler(0, well.rotation, 0, "YXZ")),
-      new THREE.Vector3(1, 1, 1),
-    );
-    crankMatrices.push(crank);
-
-    const ring = new THREE.Matrix4().compose(
-      new THREE.Vector3(well.pos.x, top + 1.4, well.pos.z),
-      new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, 0, 0)),
-      new THREE.Vector3(1, 1, 1),
-    );
-    ringMatrices.push(ring);
-    ringColors.push(statusColor(well));
-
-    padMatrices.push(
+  const platforms = field.platforms ?? [];
+  if (platforms.length) {
+    const padGeometry = new THREE.BoxGeometry(520, 1.2, 360);
+    const padMatrices = platforms.map((platform) =>
       new THREE.Matrix4().compose(
-        new THREE.Vector3(well.pos.x, top - 0.8, well.pos.z),
+        new THREE.Vector3(platform.pos.x, heightAt(platform.pos.x, platform.pos.z) + 0.1, platform.pos.z),
         new THREE.Quaternion(),
         new THREE.Vector3(1, 1, 1),
       ),
     );
-  }
+    const pads = instanced(padGeometry, materials.concrete, padMatrices);
+    pads.receiveShadow = true;
+    pads.name = "platform-pads";
+    wellGroup.add(pads);
 
-  const staticMesh = instanced(pumpStaticGeometry, materials.steel, staticMatrices, wellIds, "well");
-  staticMesh.castShadow = true;
-  staticMesh.receiveShadow = true;
-  staticMesh.name = "pump-static";
-  wellGroup.add(staticMesh);
-  pickables.push(staticMesh);
-
-  const beamMesh = instanced(beamGeometry, materials.steel, beamMatrices, wellIds, "well");
-  beamMesh.castShadow = true;
-  beamMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-  beamMesh.name = "pump-beam";
-  wellGroup.add(beamMesh);
-  pickables.push(beamMesh);
-
-  const crankMesh = instanced(crankGeometry, materials.steel, crankMatrices, wellIds, "well");
-  crankMesh.castShadow = true;
-  crankMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-  crankMesh.name = "pump-crank";
-  wellGroup.add(crankMesh);
-  pickables.push(crankMesh);
-
-  const padGeometry = new THREE.CylinderGeometry(21, 23, 1.8, 18);
-  const pads = instanced(padGeometry, materials.road, padMatrices);
-  pads.receiveShadow = true;
-  pads.name = "well-pads";
-  wellGroup.add(pads);
-
-  // 井位光点：远景时让 42 口井形成可读的星点网络
-  const wellPositions: number[] = [];
-  const wellColors: number[] = [];
-  for (const well of field.wells) {
-    const top = heightAt(well.pos.x, well.pos.z);
-    wellPositions.push(well.pos.x, top + 14, well.pos.z);
-    const color = statusColor(well);
-    wellColors.push(color.r, color.g, color.b);
-  }
-  const wellLightGeometry = new THREE.BufferGeometry();
-  wellLightGeometry.setAttribute(
-    "position",
-    new THREE.Float32BufferAttribute(wellPositions, 3),
-  );
-  wellLightGeometry.setAttribute("color", new THREE.Float32BufferAttribute(wellColors, 3));
-  const wellLightMaterial = new THREE.PointsMaterial({
-    color: 0xffffff,
-    size: 18,
-    map: materials.glowSprite.map,
-    vertexColors: true,
-    transparent: true,
-    opacity: 0.38,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-    sizeAttenuation: true,
-  });
-  const wellLights = new THREE.Points(wellLightGeometry, wellLightMaterial);
-  wellLights.layers.set(1);
-  wellLights.name = "well-lights";
-  wellGroup.add(wellLights);
-
-  const stationPositions: number[] = [];
-  const stationColors: number[] = [];
-  for (const station of field.stations) {
-    const top = heightAt(station.pos.x, station.pos.z);
-    stationPositions.push(station.pos.x, top + 28, station.pos.z);
-    const color =
-      station.id === "S-01"
-        ? new THREE.Color(TOKENS.colors.oil)
-        : new THREE.Color(TOKENS.colors.primary);
-    stationColors.push(color.r, color.g, color.b);
-  }
-  const stationLightGeometry = new THREE.BufferGeometry();
-  stationLightGeometry.setAttribute(
-    "position",
-    new THREE.Float32BufferAttribute(stationPositions, 3),
-  );
-  stationLightGeometry.setAttribute(
-    "color",
-    new THREE.Float32BufferAttribute(stationColors, 3),
-  );
-  const stationLightMaterial = new THREE.PointsMaterial({
-    color: 0xffffff,
-    size: 34,
-    map: materials.glowSprite.map,
-    vertexColors: true,
-    transparent: true,
-    opacity: 0.42,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-    sizeAttenuation: true,
-  });
-  const stationLights = new THREE.Points(stationLightGeometry, stationLightMaterial);
-  stationLights.layers.set(1);
-  stationLights.name = "station-lights";
-  stationGroup.add(stationLights);
-
-  const tankMatrices: THREE.Matrix4[] = [];
-  const tankIds: string[] = [];
-  const tankLevelMatrices: THREE.Matrix4[] = [];
-  const tankLevelColors: THREE.Color[] = [];
-  const buildingMatrices: THREE.Matrix4[] = [];
-  const buildingIds: string[] = [];
-  const rackMatrices: THREE.Matrix4[] = [];
-  const rackIds: string[] = [];
-  const stationPadMatrices: THREE.Matrix4[] = [];
-
-  for (const station of field.stations) {
-    const h = heightAt(station.pos.x, station.pos.z);
-    stationPadMatrices.push(
+    const skidGeometry = new THREE.BoxGeometry(30, 3, 12);
+    const skidMatrices = platforms.map((platform) =>
       new THREE.Matrix4().compose(
-        new THREE.Vector3(station.pos.x, h - 1.1, station.pos.z),
+        new THREE.Vector3(platform.pos.x + 40, heightAt(platform.pos.x, platform.pos.z) + 2.4, platform.pos.z - 40),
         new THREE.Quaternion(),
         new THREE.Vector3(1, 1, 1),
       ),
     );
-
-    for (let i = 0; i < station.tanks; i += 1) {
-      const offset = (i - (station.tanks - 1) / 2) * 34;
-      const x = station.pos.x + offset;
-      const z = station.pos.z + 44;
-      const scale = 0.82 + (i % 3) * 0.1;
-      const matrix = new THREE.Matrix4().compose(
-        new THREE.Vector3(x, h, z),
-        new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), station.rotation),
-        new THREE.Vector3(scale, scale, scale),
-      );
-      tankMatrices.push(matrix);
-      tankIds.push(station.id);
-      const levelY = h + (7 + (i % 3) * 4) * scale;
-      tankLevelMatrices.push(
-        new THREE.Matrix4().compose(
-          new THREE.Vector3(x, levelY, z),
-          new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, 0, 0)),
-          new THREE.Vector3(scale, scale, scale),
-        ),
-      );
-      tankLevelColors.push(
-        new THREE.Color(station.type === "注水站" ? TOKENS.colors.water : TOKENS.colors.oil),
-      );
-    }
-
-    for (let i = 0; i < station.buildings; i += 1) {
-      const x = station.pos.x - 34 + (i % 2) * 46;
-      const z = station.pos.z - 52 - Math.floor(i / 2) * 32;
-      buildingMatrices.push(
-        new THREE.Matrix4().compose(
-          new THREE.Vector3(x, h, z),
-          new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), station.rotation),
-          new THREE.Vector3(0.9, 0.9, 0.9),
-        ),
-      );
-      buildingIds.push(station.id);
-    }
-
-    for (let i = 0; i < 2; i += 1) {
-      rackMatrices.push(
-        new THREE.Matrix4().compose(
-          new THREE.Vector3(station.pos.x - 36 + i * 18, h, station.pos.z + 4),
-          new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), station.rotation),
-          new THREE.Vector3(1, 1, 1),
-        ),
-      );
-      rackIds.push(station.id);
-    }
+    const skids = instanced(skidGeometry, materials.steel, skidMatrices);
+    skids.castShadow = true;
+    skids.receiveShadow = true;
+    skids.name = "platform-skids";
+    wellGroup.add(skids);
   }
 
-  const tankMesh = instanced(buildTankGeometry(), materials.tank, tankMatrices, tankIds, "station");
-  tankMesh.castShadow = true;
-  tankMesh.receiveShadow = true;
-  tankMesh.name = "station-tanks";
-  stationGroup.add(tankMesh);
-  pickables.push(tankMesh);
-
-  const buildingMesh = instanced(
-    buildBuildingGeometry(),
-    materials.building,
-    buildingMatrices,
-    buildingIds,
-    "station",
-  );
-  buildingMesh.castShadow = true;
-  buildingMesh.receiveShadow = true;
-  buildingMesh.name = "station-buildings";
-  stationGroup.add(buildingMesh);
-  pickables.push(buildingMesh);
-
-  const rackMesh = instanced(buildRackGeometry(), materials.pipe, rackMatrices, rackIds, "station");
-  rackMesh.castShadow = true;
-  rackMesh.name = "station-racks";
-  stationGroup.add(rackMesh);
-  pickables.push(rackMesh);
-
-  const padGeometryStation = new THREE.CylinderGeometry(104, 112, 2.2, 30);
-  const stationPads = instanced(padGeometryStation, materials.road, stationPadMatrices);
-  stationPads.receiveShadow = true;
-  stationPads.name = "station-pads";
-  stationGroup.add(stationPads);
-
-  const central = field.stations[0];
-  const centralHeight = heightAt(central.pos.x, central.pos.z);
-
-  const centralRing = new THREE.Mesh(
-    new THREE.RingGeometry(138, 142, 80).rotateX(-Math.PI / 2),
-    new THREE.MeshBasicMaterial({
-      color: new THREE.Color(TOKENS.colors.oil),
-      transparent: true,
-      opacity: 0.28,
-      depthWrite: false,
-      side: THREE.DoubleSide,
-    }),
-  );
-  centralRing.position.set(central.pos.x, 2.4, central.pos.z);
-  centralRing.name = "central-station-ring";
-  stationGroup.add(centralRing);
-
-  const flareX = central.pos.x + 220;
-  const flareZ = central.pos.z - 120;
-  const flareHeight = heightAt(flareX, flareZ);
-  const flareParts = [
-    box(1.1, 150, 1.1, -7, 75, 0),
-    box(1.1, 150, 1.1, 7, 75, 0),
-    box(1.1, 150, 1.1, 0, 75, -7),
-    box(1.1, 150, 1.1, 0, 75, 7),
-  ];
-  for (let i = 0; i < 7; i += 1) {
-    flareParts.push(box(14, 0.5, 0.5, 0, 15 + i * 20, -7));
-    flareParts.push(box(14, 0.5, 0.5, 0, 15 + i * 20, 7));
-    flareParts.push(box(0.5, 0.5, 14, -7, 15 + i * 20, 0));
-    flareParts.push(box(0.5, 0.5, 14, 7, 15 + i * 20, 0));
-  }
-  const flareTower = new THREE.Mesh(merge(flareParts), materials.darkSteel);
-  flareTower.position.set(flareX, flareHeight, flareZ);
-  flareTower.castShadow = true;
-  flareTower.name = "flare-tower";
-  stationGroup.add(flareTower);
-
-  const flameGeometry = new THREE.ConeGeometry(8, 30, 12, 1, true);
-  const flame = new THREE.Mesh(flameGeometry, materials.flame);
-  flame.position.set(flareX, flareHeight + 158, flareZ);
-  flame.layers.set(1);
-  flame.name = "flare-flame";
-  stationGroup.add(flame);
-  const flameLight = new THREE.PointLight(0xff8a3d, 3.2, 900, 2);
-  flameLight.position.set(flareX, flareHeight + 160, flareZ);
-  stationGroup.add(flameLight);
-
-  const smokeSprites: THREE.Sprite[] = [];
-  for (let i = 0; i < 7; i += 1) {
-    const material = materials.smoke.clone();
-    material.opacity = 0.24 - i * 0.02;
-    const sprite = new THREE.Sprite(material);
-    sprite.position.set(flareX, flareHeight + 190 + i * 14, flareZ);
-    sprite.scale.set(64 + i * 10, 64 + i * 10, 1);
-    sprite.userData.offset = i / 7;
-    stationGroup.add(sprite);
-    smokeSprites.push(sprite);
+  const wellPadGeometry = new THREE.CylinderGeometry(22, 24, 1.2, 16);
+  const wellPadMatrices: THREE.Matrix4[] = [];
+  const wellheadMatrices: THREE.Matrix4[] = [];
+  const wellIds: string[] = [];
+  for (const well of field.wells) {
+    const y = heightAt(well.pos.x, well.pos.z);
+    wellPadMatrices.push(
+      new THREE.Matrix4().compose(
+        new THREE.Vector3(well.pos.x, y + 0.6, well.pos.z),
+        new THREE.Quaternion(),
+        new THREE.Vector3(1, 1, 1),
+      ),
+    );
+    wellheadMatrices.push(
+      new THREE.Matrix4().compose(
+        new THREE.Vector3(well.pos.x, y + 1.2, well.pos.z),
+        new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), well.rotation),
+        new THREE.Vector3(1, 1, 1),
+      ),
+    );
+    wellIds.push(well.id);
   }
 
-  group.add(buildRoads(field, heightAt));
-  group.add(buildRocks(materials, heightAt));
+  const wellPads = instanced(wellPadGeometry, materials.concrete, wellPadMatrices);
+  wellPads.receiveShadow = true;
+  wellPads.name = "well-pads";
+  wellGroup.add(wellPads);
 
-  const beamPosition = new THREE.Vector3();
-  const beamQuaternion = new THREE.Quaternion();
-  const unitScale = new THREE.Vector3(1, 1, 1);
-  const tempMatrix = new THREE.Matrix4();
+  const wellheads = instanced(buildWellheadGeometry(), materials.steel, wellheadMatrices, wellIds, "well");
+  wellheads.castShadow = true;
+  wellheads.receiveShadow = true;
+  wellheads.name = "wellheads";
+  wellGroup.add(wellheads);
+  pickables.push(wellheads);
 
-  const update = (time: number, dt: number): void => {
-    for (let index = 0; index < pumpMeta.length; index += 1) {
-      const { well, top } = pumpMeta[index];
-      const speed = well.status === "offline" ? 0 : well.status === "warning" ? 0.9 : 1.35;
-      const phase = index * 0.73;
-      const angle = speed === 0 ? 0.08 : Math.sin(time * speed + phase) * 0.16;
-      const crankAngle = speed === 0 ? 0 : -Math.sin(time * speed + phase) * 1.35;
+  for (const station of field.stations) {
+    stationGroup.add(createStation(station, materials, heightAt, pickables));
+  }
 
-      beamPosition.set(well.pos.x, top + 6.8 * PUMP_SCALE, well.pos.z);
-      beamQuaternion.setFromEuler(new THREE.Euler(0, well.rotation, angle, "YXZ"));
-      tempMatrix.compose(beamPosition, beamQuaternion, unitScale);
-      beamMesh.setMatrixAt(index, tempMatrix);
+  const boundaries = buildBlockBoundaries(field, palette);
+  blockGroup.add(boundaries.group);
+  localMaterials.push(...boundaries.materials);
 
-      beamPosition.set(well.pos.x, top + 2.8 * PUMP_SCALE, well.pos.z);
-      beamQuaternion.setFromEuler(new THREE.Euler(0, well.rotation, crankAngle, "YXZ"));
-      tempMatrix.compose(beamPosition, beamQuaternion, unitScale);
-      crankMesh.setMatrixAt(index, tempMatrix);
-    }
-    beamMesh.instanceMatrix.needsUpdate = true;
-    crankMesh.instanceMatrix.needsUpdate = true;
-
-    flame.scale.set(0.9 + Math.sin(time * 6.4) * 0.12, 0.9 + Math.sin(time * 7.7 + 1.3) * 0.16, 0.9 + Math.cos(time * 5.9) * 0.12);
-    flame.rotation.y = time * 0.8;
-    flameLight.intensity = 2.8 + Math.sin(time * 8.1) * 0.6;
-
-    smokeSprites.forEach((sprite) => {
-      const offset = (time * 0.035 + (sprite.userData.offset as number)) % 1;
-      sprite.position.y = flareHeight + 174 + offset * 150;
-      const scale = 52 + offset * 120;
-      sprite.scale.set(scale, scale, 1);
-      (sprite.material as THREE.SpriteMaterial).opacity = (1 - offset) * 0.24;
-      sprite.position.x = flareX + Math.sin(time * 0.7 + offset * 6) * 12;
+  const applyTheme = (next: ScenePalette): void => {
+    boundaries.materials.forEach((material) => {
+      material.color.set(next.blockLine);
     });
   };
 
@@ -701,15 +338,16 @@ export function createFacilities(
     stationGroup,
     blockGroup,
     pickables,
-    update,
+    update: () => {
+      // 静态气田场景，不再驱动抽油机、火炬或烟雾动画。
+    },
+    applyTheme,
     dispose: () => {
       group.traverse((object) => {
         const mesh = object as THREE.Mesh;
         if (mesh.geometry) mesh.geometry.dispose();
-        const material = mesh.material;
-        if (Array.isArray(material)) material.forEach((item) => item.dispose());
-        else material?.dispose();
       });
+      localMaterials.forEach((material) => material.dispose());
     },
   };
 }

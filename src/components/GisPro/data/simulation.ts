@@ -1,9 +1,10 @@
-import { createStats, featureName, findStation, findWell, pipelineMediumLabel } from "./field";
+import { createStats, featureName, refreshFieldAggregates } from "./chuanxi";
 import type {
   Alarm,
   AlarmLevel,
   FeatureKind,
   FieldData,
+  Pipeline,
   SimulationSnapshot,
   Stats,
   TickResult,
@@ -29,9 +30,25 @@ function round(value: number, digits = 1): number {
   return Number(value.toFixed(digits));
 }
 
+interface Violation {
+  level: AlarmLevel;
+  message: string;
+}
+
+interface AlarmState {
+  alarm: Alarm;
+  normalTicks: number;
+}
+
+const TARGET_GAS = 460;
+const ALARM_COOLDOWN = 60_000;
+const RESOLVE_TICKS = 3;
+
 export class Simulation {
-  private readonly rand = mulberry32(20261028);
+  private readonly rand = mulberry32(20261029);
   private alarms: Alarm[] = [];
+  private alarmState = new Map<string, AlarmState>();
+  private lastRaised = new Map<string, number>();
   private alarmSeq = 0;
   private tickCount = 0;
 
@@ -63,10 +80,8 @@ export class Simulation {
     message: string,
     targetType?: FeatureKind,
   ): Alarm | null {
-    const existing = this.alarms.find(
-      (alarm) => alarm.targetId === targetId && alarm.status !== "resolved",
-    );
-    if (existing) return existing;
+    const existing = this.alarmState.get(targetId)?.alarm;
+    if (existing && existing.status !== "resolved") return existing;
 
     const kind = targetType ?? this.resolveTargetType(targetId);
     if (!kind) return null;
@@ -83,6 +98,8 @@ export class Simulation {
     };
     this.alarms.unshift(alarm);
     this.alarms = this.alarms.slice(0, 10);
+    this.alarmState.set(targetId, { alarm, normalTicks: 0 });
+    this.lastRaised.set(targetId, Date.now());
     return alarm;
   }
 
@@ -91,143 +108,125 @@ export class Simulation {
     if (alarm && alarm.status === "active") alarm.status = "ack";
   }
 
-  resolveAlarm(id: string): void {
-    const alarm = this.alarms.find((item) => item.id === id);
-    if (alarm) alarm.status = "resolved";
-  }
-
-  resolveTarget(targetId: string): void {
-    this.alarms
-      .filter((alarm) => alarm.targetId === targetId && alarm.status !== "resolved")
-      .forEach((alarm) => {
-        alarm.status = "resolved";
-      });
-  }
-
   private resolveTargetType(id: string): FeatureKind | null {
-    if (findWell(this.field, id)) return "well";
-    if (findStation(this.field, id)) return "station";
+    if (this.field.wells.some((well) => well.id === id)) return "well";
+    if (this.field.stations.some((station) => station.id === id)) return "station";
     if (this.field.pipelines.some((pipeline) => pipeline.id === id)) return "pipeline";
     return null;
   }
 
-  private chooseWells(): Well[] {
-    const active = this.field.wells.filter((well) => well.status !== "offline");
-    const count = 3 + Math.floor(this.rand() * 3);
-    const picked = new Set<string>();
-    const result: Well[] = [];
-    while (result.length < count && picked.size < active.length) {
-      const well = active[Math.floor(this.rand() * active.length)];
-      if (picked.has(well.id)) continue;
-      picked.add(well.id);
-      result.push(well);
+  private wellViolation(well: Well): Violation | null {
+    if (well.status === "offline") return null;
+    const { gas, pressure, temp, water, h2s = 0 } = well.metrics;
+    if (h2s > 95) return { level: "critical", message: `硫化氢 ${h2s.toFixed(1)} g/m³，超过 90 g/m³ 预警阈值` };
+    if (h2s > 90) return { level: "warning", message: `硫化氢 ${h2s.toFixed(1)} g/m³，超过 90 g/m³ 预警阈值` };
+    if (pressure > 58) return { level: "critical", message: `井口压力 ${pressure.toFixed(1)} MPa，超过 58 MPa 预警阈值` };
+    if (pressure < 32) return { level: "warning", message: `井口压力 ${pressure.toFixed(1)} MPa，低于 32 MPa 预警阈值` };
+    if (temp > 80) return { level: "warning", message: `井口温度 ${temp.toFixed(1)} °C，超过 80 °C 预警阈值` };
+    if (water > 12) return { level: "warning", message: `产水 ${water.toFixed(1)} m³/d，超过 12 m³/d 预警阈值` };
+    if (gas > 35) return { level: "warning", message: `日产气 ${gas.toFixed(1)} 万m³/d，超过 35 万m³/d 预警阈值` };
+    if (gas < 3) return { level: "warning", message: `日产气 ${gas.toFixed(1)} 万m³/d，低于 3 万m³/d 预警阈值` };
+    return null;
+  }
+
+  private stationViolation(stationId: string): Violation | null {
+    const station = this.field.stations.find((item) => item.id === stationId);
+    if (!station) return null;
+    if (station.status === "maintenance") {
+      return { level: "info", message: `${station.name} 检修中` };
     }
-    return result;
+    if (station.medium === "rawGas") {
+      if (station.throughput > station.capacity * 1.05) {
+        return { level: "warning", message: `原料气处理量 ${station.throughput.toFixed(1)} 万m³/d，超过设计负荷` };
+      }
+      if (station.pressure > 10) {
+        return { level: "warning", message: `外输压力 ${station.pressure.toFixed(1)} MPa，超过 10 MPa 预警阈值` };
+      }
+    }
+    if (station.medium === "sweetGas" && (station.h2sOut ?? 0) > 20) {
+      return { level: "critical", message: `净化气硫化氢 ${(station.h2sOut ?? 0).toFixed(1)} mg/m³，超过 20 mg/m³ 指标` };
+    }
+    return null;
+  }
+
+  private pipelineViolation(pipeline: Pipeline): Violation | null {
+    if (pipeline.status === "maintenance") {
+      return { level: "info", message: `${pipeline.name} 检修中` };
+    }
+    if (pipeline.status === "stopped") {
+      return { level: "warning", message: `${pipeline.name} 已停输` };
+    }
+    return null;
+  }
+
+  private applyViolation(
+    targetId: string,
+    violation: Violation | null,
+    targetType?: FeatureKind,
+  ): void {
+    const state = this.alarmState.get(targetId);
+    if (!violation) {
+      if (!state) return;
+      state.normalTicks += 1;
+      if (state.normalTicks >= RESOLVE_TICKS) {
+        state.alarm.status = "resolved";
+        this.alarmState.delete(targetId);
+      }
+      return;
+    }
+
+    if (state && state.alarm.status !== "resolved") {
+      state.normalTicks = 0;
+      return;
+    }
+
+    const last = this.lastRaised.get(targetId) ?? 0;
+    if (Date.now() - last < ALARM_COOLDOWN) return;
+    this.raiseAlarm(targetId, violation.level, violation.message, targetType);
   }
 
   private mutateWell(well: Well): void {
-    const oilDelta = this.rand() * 2.2 - 1.1;
-    const gasDelta = this.rand() * 0.5 - 0.25;
-    const pressureDelta = this.rand() * 0.7 - 0.35;
-    well.metrics.oil = round(clamp(well.metrics.oil + oilDelta, 0, 62), 1);
-    well.metrics.gas = round(clamp(well.metrics.gas + gasDelta, 0, 24), 1);
-    well.metrics.pressure = round(clamp(well.metrics.pressure + pressureDelta, 4, 34), 1);
-    well.metrics.temp = round(clamp(well.metrics.temp + this.rand() * 0.5 - 0.25, 28, 92), 1);
-    well.metrics.water = round(clamp(well.metrics.water + this.rand() * 1.2 - 0.6, 0, 92), 1);
-
-    const base = well.metrics.oil || well.metrics.gas * 8 || 8;
-    well.history = [...well.history.slice(1), round(base + this.rand() * 2 - 1, 2)];
+    if (well.status === "offline") return;
+    const metrics = well.metrics;
+    metrics.gas = round(clamp(metrics.gas + this.rand() * 0.3 - 0.15, 0.5, 40), 1);
+    metrics.pressure = round(clamp(metrics.pressure + this.rand() * 0.16 - 0.08, 30, 60), 1);
+    metrics.temp = round(clamp(metrics.temp + this.rand() * 0.12 - 0.06, 45, 85), 1);
+    metrics.h2s = round(clamp((metrics.h2s ?? 60) + this.rand() * 0.3 - 0.15, 40, 98), 1);
+    metrics.water = round(clamp(metrics.water + this.rand() * 0.06 - 0.03, 0, 15), 1);
+    const base = Math.max(0.5, metrics.gas);
+    well.history = [...well.history.slice(1), round(base + this.rand() * 0.4 - 0.2, 2)];
   }
 
-  private refreshAggregates(): void {
-    for (const station of this.field.stations) {
-      const wells = this.field.wells.filter((well) => station.wellIds.includes(well.id));
-      const isLiquid = station.type === "联合站" || station.type === "外输首站";
-      station.throughput = round(
-        isLiquid
-          ? wells.reduce((total, well) => total + well.metrics.oil, 0)
-          : wells.reduce((total, well) => total + well.metrics.gas, 0),
-        isLiquid ? 0 : 1,
-      );
-      const target = isLiquid ? 6.4 : 4.2;
-      station.pressure = round(clamp(station.pressure + (this.rand() * 0.8 - 0.4), target - 2.6, target + 3.4), 1);
-    }
-
-    for (const pipeline of this.field.pipelines) {
-      if (pipeline.status !== "running") {
-        pipeline.flow = 0;
-        continue;
-      }
-      const mediumBase = pipeline.medium === "gas" ? 760 : pipeline.medium === "water" ? 420 : 620;
-      pipeline.flow = round(
-        clamp(pipeline.flow + (this.rand() * 160 - 80), mediumBase * 0.35, mediumBase * 2.1),
-        0,
-      );
-    }
-
-    for (const block of this.field.blocks) {
-      const wells = this.field.wells.filter((well) => well.blockId === block.id);
-      block.dailyOil = round(wells.reduce((total, well) => total + well.metrics.oil, 0));
-      block.dailyGas = round(wells.reduce((total, well) => total + well.metrics.gas, 0));
-    }
-
-    const stats = this.getStats();
-    this.field.productionHistory.oil = [
-      ...this.field.productionHistory.oil.slice(1),
-      round(stats.totalOil, 0),
-    ];
-    this.field.productionHistory.gas = [
-      ...this.field.productionHistory.gas.slice(1),
-      round(stats.totalGas, 1),
-    ];
-  }
-
-  private refreshAlarms(): void {
-    for (const well of this.field.wells) {
-      if (well.status !== "warning") continue;
-      if (this.alarms.some((alarm) => alarm.targetId === well.id && alarm.status !== "resolved")) {
-        continue;
-      }
-      this.raiseAlarm(
-        well.id,
-        "warning",
-        `套压 ${well.metrics.pressure.toFixed(1)} MPa，超预警阈值`,
-        "well",
-      );
-    }
-
-    for (const pipeline of this.field.pipelines) {
-      if (pipeline.status === "running") continue;
-      if (this.alarms.some((alarm) => alarm.targetId === pipeline.id && alarm.status !== "resolved")) {
-        continue;
-      }
-      this.raiseAlarm(
-        pipeline.id,
-        pipeline.status === "maintenance" ? "info" : "warning",
-        `${pipeline.name} ${pipeline.status === "maintenance" ? "检修中" : "已停输"} · ${pipelineMediumLabel(pipeline.medium)}`,
-        "pipeline",
-      );
+  private balanceGas(): void {
+    const openWells = this.field.wells.filter((well) => well.status !== "offline");
+    if (!openWells.length) return;
+    const current = openWells.reduce((total, well) => total + well.metrics.gas, 0);
+    const adjust = (TARGET_GAS - current) / openWells.length;
+    for (const well of openWells) {
+      well.metrics.gas = round(clamp(well.metrics.gas + adjust, 0.5, 40), 1);
     }
   }
 
   tick(): TickResult {
     this.tickCount += 1;
-    const wells = this.chooseWells();
-    wells.forEach((well) => this.mutateWell(well));
-    this.refreshAggregates();
-    this.refreshAlarms();
+    for (const well of this.field.wells) this.mutateWell(well);
+    this.balanceGas();
+    refreshFieldAggregates(this.field);
 
-    const changedStationIds = this.field.stations
-      .filter((station, index) => station.status !== "normal" || index % 3 === this.tickCount % 3)
-      .map((station) => station.id);
-    const changedPipelineIds = this.field.pipelines
-      .filter((pipeline) => pipeline.status !== "running" || this.rand() > 0.5)
-      .map((pipeline) => pipeline.id);
+    for (const well of this.field.wells) {
+      this.applyViolation(well.id, this.wellViolation(well), "well");
+    }
+    for (const station of this.field.stations) {
+      this.applyViolation(station.id, this.stationViolation(station.id), "station");
+    }
+    for (const pipeline of this.field.pipelines) {
+      this.applyViolation(pipeline.id, this.pipelineViolation(pipeline), "pipeline");
+    }
 
     return {
-      changedWellIds: wells.map((well) => well.id),
-      changedStationIds,
-      changedPipelineIds,
+      changedWellIds: this.field.wells.filter((well) => well.status !== "offline").map((well) => well.id),
+      changedStationIds: this.field.stations.map((station) => station.id),
+      changedPipelineIds: this.field.pipelines.map((pipeline) => pipeline.id),
       stats: this.getStats(),
       alarms: [...this.alarms],
     };

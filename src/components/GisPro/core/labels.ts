@@ -1,8 +1,7 @@
 import * as THREE from "three";
 import { CSS2DObject, CSS2DRenderer } from "three/examples/jsm/renderers/CSS2DRenderer.js";
-import type { FieldData } from "../data/types";
-import { pipelineMediumLabel } from "../data/field";
-import { TOKENS } from "../styles/tokens";
+import type { FieldData, Pipeline, Station } from "../data/types";
+import { pipelineMediumLabel } from "../data/chuanxi";
 
 interface LabelEntry {
   id: string;
@@ -22,31 +21,48 @@ export interface LabelSystem {
   setAlarms(ids: string[]): void;
   setEnabled(visible: boolean): void;
   setKindEnabled(kind: LabelEntry["kind"], visible: boolean): void;
-  setUnderground(active: boolean): void;
   getVisibleCount(): number;
   dispose(): void;
 }
 
 function colorForKey(key: string): string {
-  const colors = TOKENS.colors as Record<string, string>;
-  return colors[key] ?? TOKENS.colors.primary;
+  return `var(--af-${key}, var(--af-primary))`;
 }
 
 function wellColor(kind: string, status: string): string {
-  if (status === "warning") return TOKENS.colors.warning;
-  if (status === "offline") return TOKENS.colors.inkMuted;
-  if (kind === "gas") return TOKENS.colors.gas;
-  if (kind === "water") return TOKENS.colors.water;
-  if (kind === "observation") return TOKENS.colors.info;
-  return TOKENS.colors.oil;
+  if (status === "warning") return "var(--af-warning)";
+  if (status === "offline") return "var(--af-ink-muted)";
+  if (kind === "gas") return "var(--af-gas)";
+  if (kind === "water") return "var(--af-water)";
+  if (kind === "observation") return "var(--af-info)";
+  return "var(--af-oil)";
 }
 
 function pipelineColor(medium: string, status: string): string {
-  if (status === "maintenance") return TOKENS.colors.warning;
-  if (status === "stopped") return TOKENS.colors.inkMuted;
-  if (medium === "gas") return TOKENS.colors.gas;
-  if (medium === "water") return TOKENS.colors.water;
-  return TOKENS.colors.oil;
+  if (status === "maintenance") return "var(--af-warning)";
+  if (status === "stopped") return "var(--af-ink-muted)";
+  if (medium === "gas") return "var(--af-gas)";
+  if (medium === "water") return "var(--af-water)";
+  return "var(--af-oil)";
+}
+
+function wellMetric(well: { metrics: { gas: number }; status: string }): string {
+  return well.status === "offline" ? "停产" : `日产气 ${well.metrics.gas.toFixed(1)} 万m³/d`;
+}
+
+function stationMetric(station: Station): string {
+  if (station.medium === "rawGas") return `处理 ${station.throughput.toFixed(1)} 万m³/d`;
+  if (station.medium === "sweetGas") return `外输 ${station.throughput.toFixed(1)} 万m³/d`;
+  if (station.medium === "water") return `处理 ${station.throughput.toFixed(0)} m³/d`;
+  if (station.type === "中心控制站") return `监控 ${station.wellIds.length} 口井`;
+  return "应急值守";
+}
+
+function pipelineMetric(pipeline: Pipeline): string {
+  if (pipeline.service === "producedWater") {
+    return `${pipelineMediumLabel(pipeline)} · ${pipeline.flow.toFixed(0)} m³/d`;
+  }
+  return `${pipelineMediumLabel(pipeline)} · ${pipeline.flow.toFixed(1)} 万m³/d`;
 }
 
 function createElement(color: string): {
@@ -78,6 +94,7 @@ export function createLabelSystem(
   parent: THREE.Object3D,
   field: FieldData,
   scene: THREE.Scene,
+  onActivate?: (id: string, kind: LabelEntry["kind"]) => void,
 ): LabelSystem {
   const renderer = new CSS2DRenderer();
   renderer.setSize(1920, 1080);
@@ -89,7 +106,6 @@ export function createLabelSystem(
   let selectedId: string | null = null;
   let alarmIds = new Set<string>();
   let enabled = true;
-  let underground = false;
   const kindEnabled: Record<LabelEntry["kind"], boolean> = {
     well: true,
     station: true,
@@ -110,8 +126,24 @@ export function createLabelSystem(
     distanceLimit: number,
   ): void => {
     const element = createElement(color);
+    const pill = element.anchor.querySelector<HTMLElement>(".af-scene-label");
     if (kind === "block") {
-      element.anchor.querySelector(".af-scene-label")?.classList.add("is-block");
+      pill?.classList.add("is-block");
+    }
+    if (pill && onActivate) {
+      pill.tabIndex = 0;
+      pill.setAttribute("role", "button");
+      pill.title = "点击聚焦";
+      const activate = (event: Event): void => {
+        event.stopPropagation();
+        onActivate(id, kind);
+      };
+      pill.addEventListener("click", activate);
+      pill.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        activate(event);
+      });
     }
     element.name.textContent = name;
     element.metric.textContent = metric;
@@ -140,9 +172,9 @@ export function createLabelSystem(
       70,
       well.pos.z,
       well.name,
-      `套压 ${well.metrics.pressure.toFixed(1)} MPa`,
+      wellMetric(well),
       wellColor(well.kind, well.status),
-      7000,
+      12_000,
     );
   }
 
@@ -154,9 +186,9 @@ export function createLabelSystem(
       118,
       station.pos.z,
       station.name,
-      station.type,
-      TOKENS.colors.primary,
-      12_000,
+      stationMetric(station),
+      "var(--af-primary)",
+      20_000,
     );
   }
 
@@ -168,7 +200,7 @@ export function createLabelSystem(
       58,
       block.center.z,
       block.name,
-      `${block.dailyOil.toFixed(0)} t/d`,
+      `日产气 ${block.dailyGas.toFixed(1)} 万m³/d`,
       colorForKey(block.colorKey),
       30_000,
     );
@@ -188,9 +220,9 @@ export function createLabelSystem(
       54,
       anchor.z,
       pipeline.name,
-      `${pipelineMediumLabel(pipeline.medium)} · ${pipeline.flow.toFixed(0)} m³/h`,
+      pipelineMetric(pipeline),
       pipelineColor(pipeline.medium, pipeline.status),
-      10_000,
+      18_000,
     );
   });
 
@@ -198,23 +230,23 @@ export function createLabelSystem(
     for (const well of data.wells) {
       const entry = byId.get(well.id);
       if (!entry) continue;
-      entry.metricElement.textContent = `套压 ${well.metrics.pressure.toFixed(1)} MPa`;
+      entry.metricElement.textContent = wellMetric(well);
       entry.element.style.setProperty("--label-color", wellColor(well.kind, well.status));
     }
     for (const station of data.stations) {
       const entry = byId.get(station.id);
       if (!entry) continue;
-      entry.metricElement.textContent = `${station.type} · ${station.throughput.toFixed(0)}`;
+      entry.metricElement.textContent = stationMetric(station);
     }
     for (const block of data.blocks) {
       const entry = byId.get(block.id);
       if (!entry) continue;
-      entry.metricElement.textContent = `${block.dailyOil.toFixed(0)} t/d`;
+      entry.metricElement.textContent = `日产气 ${block.dailyGas.toFixed(1)} 万m³/d`;
     }
     for (const pipeline of data.pipelines) {
       const entry = byId.get(pipeline.id);
       if (!entry) continue;
-      entry.metricElement.textContent = `${pipelineMediumLabel(pipeline.medium)} · ${pipeline.flow.toFixed(0)} m³/h`;
+      entry.metricElement.textContent = pipelineMetric(pipeline);
       entry.element.style.setProperty("--label-color", pipelineColor(pipeline.medium, pipeline.status));
     }
   };
@@ -263,7 +295,7 @@ export function createLabelSystem(
         entry.id === selectedId ||
         alarmIds.has(entry.id) ||
         entry.kind === "block";
-      if (!enabled || underground || !kindEnabled[entry.kind]) {
+      if (!enabled || !kindEnabled[entry.kind]) {
         entry.object.visible = false;
         continue;
       }
@@ -372,10 +404,6 @@ export function createLabelSystem(
       }
     },
     getVisibleCount: () => entries.filter((entry) => entry.object.visible).length,
-    setUnderground: (active: boolean) => {
-      underground = active;
-      if (active) entries.forEach((entry) => (entry.object.visible = false));
-    },
     dispose: () => {
       entries.forEach((entry) => {
         entry.object.removeFromParent();

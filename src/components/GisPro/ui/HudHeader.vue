@@ -2,24 +2,23 @@
 import { computed } from "vue";
 import AfIcon from "./AfIcon.vue";
 import KpiStrip from "./KpiStrip.vue";
-import { state } from "./store";
+import { actions, state } from "./store";
 
 const emit = defineEmits<{ fullscreen: [] }>();
 
 const imageryLabel = computed(() => {
-  if (state.imagery === "esri") return "卫星影像在线";
-  if (state.imagery === "gaode") return "高德影像在线";
-  if (state.imagery === "local") return "局部地形底图";
-  if (state.imagery === "offline") return "离线网格底图";
+  if (state.imagery === "esri") return "卫星影像";
+  if (state.imagery === "gaode") return "高德影像";
+  if (state.imagery === "local") return "本地底图";
+  if (state.imagery === "offline") return "离线网格";
   return "连接影像服务";
 });
 
 const imageryHint = computed(() => {
-  if (state.imagery === "esri") return "ESRI / WGS84";
-  if (state.imagery === "gaode") return "AMAP / DEMO";
-  if (state.imagery === "local") return "LOCAL TERRAIN / DEMO";
-  if (state.imagery === "offline") return "GRID FALLBACK";
-  return "CONNECTING";
+  if (state.imagery === "gaode") return "坐标示意 · 演示数据";
+  if (state.imagery === "offline") return "离线网格 · 演示数据";
+  if (state.imagery === "esri") return "影像 © Esri · 演示数据";
+  return "演示数据 · 非实时生产数据";
 });
 </script>
 
@@ -27,14 +26,12 @@ const imageryHint = computed(() => {
   <header class="af-header">
     <div class="af-brand">
       <div class="af-brand__mark" aria-hidden="true">
-        <span class="af-brand__orbit"></span>
-        <span class="af-brand__orbit af-brand__orbit--two"></span>
-        <i></i>
+        <AfIcon name="well" :size="20" />
       </div>
       <div class="af-brand__copy">
-        <strong>AURORA FIELD</strong>
-        <div>极光油田 <em>·</em> 智慧生产指挥中心</div>
-        <small>DIGITAL TWIN / PRODUCTION COMMAND</small>
+        <strong>川西气田</strong>
+        <div>生产运行监控</div>
+        <small>彭州市 · 演示数据</small>
       </div>
     </div>
 
@@ -49,9 +46,20 @@ const imageryHint = computed(() => {
         <span class="af-led" :class="{ 'is-offline': state.imagery === 'offline' }"></span>
         <div>
           <b>{{ imageryLabel }}</b>
-          <small>{{ imageryHint }} · 演示数据</small>
+          <small>{{ imageryHint }}</small>
         </div>
       </div>
+      <button
+        class="af-icon-btn af-theme-btn"
+        type="button"
+        role="switch"
+        :aria-checked="state.theme === 'dark'"
+        :aria-label="state.theme === 'dark' ? '切换为亮色主题' : '切换为暗色主题'"
+        :title="state.theme === 'dark' ? '切换为亮色主题' : '切换为暗色主题'"
+        @click="actions.toggleTheme()"
+      >
+        <AfIcon :name="state.theme === 'dark' ? 'sun' : 'moon'" :size="16" />
+      </button>
       <button class="af-icon-btn" type="button" title="全屏" @click="emit('fullscreen')">
         <AfIcon name="fullscreen" :size="17" />
       </button>

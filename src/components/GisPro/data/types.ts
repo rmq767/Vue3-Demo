@@ -3,19 +3,24 @@ export type WellKind = "oil" | "gas" | "water" | "observation";
 export type WellStatus = "normal" | "warning" | "offline";
 export type StationStatus = "normal" | "maintenance";
 export type Medium = "oil" | "gas" | "water";
+export type StationMedium = "rawGas" | "sweetGas" | "water" | "sulfur" | "none";
+export type PipelineService = "rawGas" | "sweetGas" | "producedWater";
 export type PipelineStatus = "running" | "maintenance" | "stopped";
 export type AlarmLevel = "info" | "warning" | "critical";
 export type AlarmStatus = "active" | "ack" | "resolved";
-export type LayerKey =
-  | "wells"
-  | "stations"
-  | "pipelines"
-  | "arcs"
-  | "blocks"
-  | "underground"
-  | "labels";
+export type LayerKey = "wells" | "stations" | "pipelines" | "blocks" | "labels";
 export type ImageryStatus = "loading" | "esri" | "gaode" | "local" | "offline";
-export type Tone = "default" | "primary" | "success" | "warning" | "danger" | "oil" | "muted";
+export type Tone =
+  | "default"
+  | "primary"
+  | "success"
+  | "warning"
+  | "danger"
+  | "oil"
+  | "gas"
+  | "water"
+  | "sulfur"
+  | "muted";
 
 export interface Vec2 {
   x: number;
@@ -28,6 +33,8 @@ export interface WellMetrics {
   water: number;
   pressure: number;
   temp: number;
+  /** 原料气硫化氢质量浓度，单位 g/m³。 */
+  h2s?: number;
 }
 
 export interface Well {
@@ -45,6 +52,10 @@ export interface Well {
   reservoirId: string;
   lateralLength: number;
   azimuth: number;
+  platformId?: string;
+  /** 测试日产气，单位万 m³/d。 */
+  testGas?: number;
+  commissionedAt?: string;
 }
 
 export interface Station {
@@ -60,6 +71,14 @@ export interface Station {
   buildings: number;
   wellIds: string[];
   rotation: number;
+  medium?: StationMedium;
+  units?: number;
+  vehicles?: number;
+  staff?: number;
+  coverageKm?: number;
+  /** 净化气出口硫化氢，单位 mg/m³。 */
+  h2sOut?: number;
+  commissionedAt?: string;
 }
 
 export interface Pipeline {
@@ -73,6 +92,11 @@ export interface Pipeline {
   lengthKm: number;
   flow: number;
   status: PipelineStatus;
+  service?: PipelineService;
+  designPressure?: number;
+  fromName?: string;
+  toName?: string;
+  history?: number[];
 }
 
 export interface Block {
@@ -85,6 +109,31 @@ export interface Block {
   wellIds: string[];
   dailyOil: number;
   dailyGas: number;
+  county?: string;
+}
+
+export interface PlatformInfo {
+  id: string;
+  name: string;
+  blockId: string;
+  stationId: string;
+  pos: Vec2;
+  lon: number;
+  lat: number;
+  wellIds: string[];
+  commissionedAt: string;
+}
+
+export interface FieldMeta {
+  reservesGas: number;
+  areaKm2: number;
+  annualCapacity: number;
+  annualOutput2024: number;
+  sulfurAnnual: number;
+  pipelineKm: number;
+  platformCount: number;
+  wellCount: number;
+  purifiedYield: number;
 }
 
 export interface StrataLayer {
@@ -140,7 +189,11 @@ export interface FieldData {
   productionHistory: {
     oil: number[];
     gas: number[];
+    sweetGas?: number[];
+    water?: number[];
   };
+  platforms?: PlatformInfo[];
+  meta?: FieldMeta;
 }
 
 export interface Metric {
@@ -173,6 +226,7 @@ export interface BlockRankItem {
   oil: number;
   percent: number;
   colorKey: string;
+  gas?: number;
 }
 
 export interface Stats {
@@ -189,7 +243,18 @@ export interface Stats {
   history: {
     oil: number[];
     gas: number[];
+    sweetGas?: number[];
+    water?: number[];
   };
+  totalSweetGas?: number;
+  sulfurDaily?: number;
+  annualCapacity?: number;
+  sulfurAnnual?: number;
+  areaKm2?: number;
+  pipelineCount?: number;
+  platformCount?: number;
+  stationCount?: number;
+  updatedAt?: number;
 }
 
 export interface SearchItem {
@@ -267,15 +332,8 @@ export interface TourChapterScript extends TourChapter {
 }
 
 export interface TourScript {
-  intro: CameraShot[];
   overview: CameraState;
   chapters: TourChapterScript[];
-  alarm: {
-    shot: CameraShot;
-    targetId: string;
-    message: string;
-    resolveAfter: number;
-  };
 }
 
 export interface FieldStatsInput {

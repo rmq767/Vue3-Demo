@@ -19,7 +19,7 @@ const MIN_PITCH = -85;
 const MAX_PITCH = -14;
 const MIN_RANGE = 180;
 const MAX_RANGE = 90_000;
-const TARGET_RADIUS = 1750;
+const TARGET_RADIUS = 14_000;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -77,7 +77,11 @@ export function createOrbitController(options: OrbitOptions): OrbitController {
       moved = 0;
       lastX = event.clientX;
       lastY = event.clientY;
-      canvas.setPointerCapture?.(event.pointerId);
+      try {
+        canvas.setPointerCapture?.(event.pointerId);
+      } catch {
+        // 指针可能在捕获前已释放。
+      }
     } else {
       dragging = false;
       pinchDistance = pointerDistance();
@@ -115,7 +119,11 @@ export function createOrbitController(options: OrbitOptions): OrbitController {
   const handlePointerUp = (event: PointerEvent): void => {
     const wasSingle = pointers.size === 1;
     pointers.delete(event.pointerId);
-    canvas.releasePointerCapture?.(event.pointerId);
+    try {
+      canvas.releasePointerCapture?.(event.pointerId);
+    } catch {
+      // 指针捕获已自动释放。
+    }
 
     if (wasSingle && dragging && moved < 5 && !multiTouch) {
       onTap(event.clientX, event.clientY);

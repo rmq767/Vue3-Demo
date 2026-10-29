@@ -1,4 +1,10 @@
-import { findPipeline, findStation, findWell, pipelineMediumLabel } from "./field";
+import {
+  findPipeline,
+  findPlatform,
+  findStation,
+  findWell,
+  pipelineMediumLabel,
+} from "./chuanxi";
 import type { CameraState, FieldData, TourChapterScript, TourScript } from "./types";
 
 const TOP = 0;
@@ -9,21 +15,25 @@ function centerState(overrides: Partial<CameraState> = {}): CameraState {
     z: 0,
     height: TOP,
     heading: -18,
-    pitch: -26,
-    range: 5600,
+    pitch: -34,
+    range: 11_000,
     ...overrides,
   };
 }
 
-function wellState(field: FieldData, id: string, overrides: Partial<CameraState> = {}): CameraState {
-  const well = findWell(field, id);
+function platformState(
+  field: FieldData,
+  id: string,
+  overrides: Partial<CameraState> = {},
+): CameraState {
+  const platform = findPlatform(field, id);
   return {
-    x: well?.pos.x ?? 0,
-    z: well?.pos.z ?? 0,
+    x: platform?.pos.x ?? 0,
+    z: platform?.pos.z ?? 0,
     height: TOP,
-    heading: -34,
-    pitch: -24,
-    range: 380,
+    heading: -26,
+    pitch: -30,
+    range: 2400,
     ...overrides,
   };
 }
@@ -34,9 +44,9 @@ function stationState(field: FieldData, id: string, overrides: Partial<CameraSta
     x: station?.pos.x ?? 0,
     z: station?.pos.z ?? 0,
     height: TOP,
-    heading: 36,
-    pitch: -25,
-    range: 780,
+    heading: 24,
+    pitch: -28,
+    range: 2200,
     ...overrides,
   };
 }
@@ -52,10 +62,10 @@ function trajectoryState(
   return {
     x: well?.pos.x ?? 0,
     z: well?.pos.z ?? 0,
-    height: 200 + depth / 2,
+    height: -depth / 2 + 500,
     heading: -14,
-    pitch: -20,
-    range: 5200,
+    pitch: -22,
+    range: 15_000,
     ...overrides,
   };
 }
@@ -73,84 +83,72 @@ function pipelineState(
     z: mid.z,
     height: TOP,
     heading: 22,
-    pitch: -24,
-    range: 900,
+    pitch: -30,
+    range: 4200,
     ...overrides,
   };
 }
 
 export function createTourScript(field: FieldData): TourScript {
-  const introShots = [
-    { range: 30_000_000, heading: -30, pitch: -45, duration: 2.0 },
-    { range: 1_200_000, heading: -27, pitch: -48, duration: 1.35 },
-    { range: 34_000, heading: -23, pitch: -42, duration: 1.35 },
-    { range: 11_000, heading: -20, pitch: -32, duration: 1.15 },
-    { range: 5_600, heading: -18, pitch: -26, duration: 0.9 },
-  ];
-  const intro = introShots.map((shot, index) => ({
-    id: `intro-${index + 1}`,
-    label: index === introShots.length - 1 ? "极光油田" : "进入油田",
-    duration: shot.duration,
-    hold: index === introShots.length - 1 ? 0.45 : 0,
-    state: centerState({
-      range: shot.range,
-      heading: shot.heading,
-      pitch: shot.pitch,
-    }),
-  }));
-
-  const trajectoryWell = findWell(field, "W-018");
-  const trunk = field.pipelines[0];
+  const platforms = field.platforms ?? [];
+  const pipelineKm = field.pipelines.reduce((total, pipeline) => total + pipeline.lengthKm, 0);
+  const trajectoryWell = findWell(field, "W-501");
+  const warningWell = findWell(field, "W-805");
+  const platform6 = findPlatform(field, "PF-06");
+  const rawTrunk = field.pipelines.find((pipeline) => pipeline.service === "rawGas") ?? field.pipelines[0];
+  const sweetTrunk = field.pipelines.find((pipeline) => pipeline.service === "sweetGas");
+  const desulfurization = findStation(field, "S-02");
 
   const chapters: TourChapterScript[] = [
     {
       id: "overview",
       label: "全景",
-      subtitle: "地面油田数字孪生",
+      subtitle: "川西气田生产运行总览",
       labels: false,
       shots: [
         {
           id: "overview-a",
-          label: "极光油田",
-          subtitle: `42 口井 · 8 座站库 · ${field.pipelines.length} 条管线`,
+          label: "川西气田",
+          subtitle: `${field.wells.length} 口井 · ${platforms.length} 个平台 · ${field.stations.length} 座站库 · ${pipelineKm.toFixed(1)} km 管网`,
           duration: 1.2,
           hold: 2.4,
-          state: centerState({ heading: -16, pitch: -26, range: 5600 }),
+          state: centerState(),
         },
         {
           id: "overview-b",
-          label: "极光油田",
-          subtitle: "生产运行总览",
+          label: "生产运行总览",
+          subtitle: "原料气集输 · 脱硫净化 · 净化气外输",
           duration: 4.8,
           hold: 1.6,
-          state: centerState({ heading: -52, pitch: -24, range: 6000 }),
+          state: centerState({ heading: -52, pitch: -30, range: 13_000 }),
         },
       ],
     },
     {
-      id: "well",
-      label: "井场",
-      subtitle: "抽油机与单井实时参数",
+      id: "platform",
+      label: "平台",
+      subtitle: "井场与单井实时参数",
       labels: true,
       shots: [
         {
-          id: "well-a",
-          label: "18 号井场",
-          subtitle: "套压异常 · 进入预警监视",
+          id: "platform-a",
+          label: "6#平台",
+          subtitle: `${platform6?.wellIds.length ?? 0} 口井 · 2024-03 投产`,
           duration: 1.1,
           hold: 2.2,
           cue: "well",
-          targetId: "W-018",
-          state: wellState(field, "W-018"),
+          targetId: platform6?.wellIds[0],
+          state: platformState(field, "PF-06"),
         },
         {
-          id: "well-b",
-          label: "7 号井场",
-          subtitle: "游梁式抽油机 · 连续生产",
+          id: "platform-b",
+          label: "8#平台",
+          subtitle: `5 口井 · 彭州8-5D 参数预警`,
           duration: 1.4,
-          hold: 1.8,
-          targetId: "W-007",
-          state: wellState(field, "W-007", { heading: -8, pitch: -20, range: 350 }),
+          hold: 2.0,
+          cue: "well",
+          targetId: warningWell?.id,
+          state: platformState(field, "PF-08", { heading: -12, pitch: -24, range: 1700 }),
         },
       ],
     },
@@ -159,17 +157,17 @@ export function createTourScript(field: FieldData): TourScript {
       label: "井轨迹",
       subtitle: "地层柱与井眼轨迹",
       labels: false,
-      trajectoryWellId: "W-018",
+      trajectoryWellId: "W-501",
       shots: [
         {
           id: "trajectory-a",
-          label: "极光18井 · 井轨迹",
-          subtitle: `${Math.round(trajectoryWell?.depth ?? 0)} m · 马家沟深层 · 地层柱 / 井眼轨迹 / 油藏层带`,
+          label: "彭州5-1D · 井轨迹",
+          subtitle: `${trajectoryWell?.depth ?? 8208} m · 雷四段 · 地层柱 / 井眼轨迹 / 气藏层带`,
           duration: 1.4,
           hold: 3.4,
           cue: "trajectory",
-          targetId: "W-018",
-          state: trajectoryState(field, "W-018"),
+          targetId: "W-501",
+          state: trajectoryState(field, "W-501"),
         },
       ],
     },
@@ -181,64 +179,48 @@ export function createTourScript(field: FieldData): TourScript {
       shots: [
         {
           id: "pipeline-a",
-          label: "集输管网",
-          subtitle: `${field.pipelines.length} 条管线 · 流向实时可视化`,
+          label: "集气管网",
+          subtitle: `${field.pipelines.length} 条管线 · ${pipelineKm.toFixed(1)} km · 原料气 / 净化气 / 采出水`,
           duration: 1.3,
-          hold: 1.2,
+          hold: 1.4,
           cue: "pipeline",
-          targetId: trunk?.id,
-          state: centerState({ heading: 22, pitch: -26, range: 2400 }),
+          targetId: rawTrunk?.id,
+          state: centerState({ heading: 22, pitch: -30, range: 6800 }),
         },
         {
           id: "pipeline-b",
-          label: trunk?.name ?? "集输干线",
-          subtitle: `${trunk?.id ?? ""} · ${pipelineMediumLabel(trunk?.medium ?? "gas")} · 流向实时可视化`,
+          label: sweetTrunk?.name ?? "净化气外输干线",
+          subtitle: `${sweetTrunk?.id ?? ""} · ${pipelineMediumLabel(sweetTrunk ?? rawTrunk ?? "gas")} · 外输压力 ${desulfurization?.pressure.toFixed(1) ?? "—"} MPa`,
           duration: 1.4,
-          hold: 2.4,
+          hold: 2.2,
           cue: "pipeline",
-          targetId: trunk?.id,
-          state: pipelineState(field, trunk?.id ?? ""),
+          targetId: sweetTrunk?.id ?? rawTrunk?.id,
+          state: pipelineState(field, sweetTrunk?.id ?? rawTrunk?.id ?? ""),
         },
       ],
     },
     {
       id: "station",
       label: "站库",
-      subtitle: "联合站与储运",
+      subtitle: "脱硫净化与外输",
       labels: true,
       shots: [
         {
           id: "station-a",
-          label: "极光联合站",
-          subtitle: "外输 · 储罐 · 火炬",
+          label: desulfurization?.name ?? "1#脱硫站",
+          subtitle: "原料气处理 · 硫磺回收 · 净化气外输",
           duration: 1.2,
           hold: 2.8,
           cue: "station",
-          targetId: "S-01",
-          state: stationState(field, "S-01"),
+          targetId: desulfurization?.id,
+          state: stationState(field, "S-02"),
         },
       ],
     },
   ];
 
   return {
-    intro,
     overview: centerState(),
     chapters,
-    alarm: {
-      shot: {
-        id: "alarm-a",
-        label: "18 号井套压异常",
-        subtitle: "32.6 MPa · 超过 30 MPa 预警阈值",
-        duration: 0.9,
-        hold: 2.2,
-        cue: "alarm",
-        targetId: "W-018",
-        state: wellState(field, "W-018", { heading: -18, pitch: -17, range: 320 }),
-      },
-      targetId: "W-018",
-      message: "套压 32.6 MPa，超过 30 MPa 预警阈值",
-      resolveAfter: 7,
-    },
   };
 }

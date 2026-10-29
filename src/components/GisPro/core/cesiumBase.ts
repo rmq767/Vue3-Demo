@@ -1,28 +1,43 @@
 import * as Cesium from "cesium";
 import type { FieldData, ImageryStatus } from "../data/types";
-import { TOKENS } from "../styles/tokens";
+import {
+  getSceneTheme,
+  type ScenePalette,
+  type ThemeMode,
+} from "../styles/tokens";
 import { createMarkerDataUrl } from "../fx/materials";
 
-const ESRI_URL =
-  "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
 const GAODE_URL =
   "https://webst02.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}";
 
 export interface CesiumBase {
   viewer: Cesium.Viewer;
   setMarkerVisible(visible: boolean): void;
+  setUnderground(active: boolean): void;
   getImageryStatus(): ImageryStatus;
+  applyTheme(mode: ThemeMode): void;
   destroy(): void;
 }
 
 interface CesiumBaseOptions {
   container: HTMLElement;
   field: FieldData;
+  theme?: ThemeMode;
   onImagery?: (status: ImageryStatus) => void;
 }
 
+function makeGrid(palette: ScenePalette): Cesium.GridImageryProvider {
+  return new Cesium.GridImageryProvider({
+    cells: 5,
+    color: Cesium.Color.fromCssColorString(palette.grid.color).withAlpha(0.14),
+    glowColor: Cesium.Color.fromCssColorString(palette.grid.color).withAlpha(0.06),
+    backgroundColor: Cesium.Color.fromCssColorString(palette.grid.backgroundColor),
+  });
+}
+
 export function createCesiumBase(options: CesiumBaseOptions): CesiumBase {
-  const { container, field, onImagery } = options;
+  const { container, field, theme = "light", onImagery } = options;
+  let palette = getSceneTheme(theme);
 
   const viewer = new Cesium.Viewer(container, {
     baseLayer: false,
@@ -47,23 +62,23 @@ export function createCesiumBase(options: CesiumBaseOptions): CesiumBase {
   if (credit) credit.style.display = "none";
 
   viewer.resolutionScale = Math.min(window.devicePixelRatio || 1, 1.25);
-  scene.backgroundColor = Cesium.Color.fromCssColorString(TOKENS.colors.void);
-  scene.globe.baseColor = Cesium.Color.fromCssColorString("#0a2634");
+  scene.backgroundColor = Cesium.Color.fromCssColorString(palette.sky);
+  scene.globe.baseColor = Cesium.Color.fromCssColorString(palette.grid.backgroundColor);
   scene.globe.enableLighting = false;
   scene.globe.depthTestAgainstTerrain = false;
-  scene.globe.showGroundAtmosphere = true;
+  scene.globe.showGroundAtmosphere = theme === "light";
   scene.globe.maximumScreenSpaceError = 2.2;
   scene.globe.tileCacheSize = 256;
   scene.highDynamicRange = false;
   scene.fog.enabled = false;
-  if (scene.skyBox) scene.skyBox.show = true;
+  if (scene.skyBox) scene.skyBox.show = false;
   if (scene.sun) scene.sun.show = false;
   if (scene.moon) scene.moon.show = false;
   if (scene.skyAtmosphere) {
-    scene.skyAtmosphere.show = true;
-    scene.skyAtmosphere.hueShift = -0.22;
-    scene.skyAtmosphere.saturationShift = -0.35;
-    scene.skyAtmosphere.brightnessShift = -0.32;
+    scene.skyAtmosphere.show = theme === "light";
+    scene.skyAtmosphere.hueShift = -0.08;
+    scene.skyAtmosphere.saturationShift = -0.25;
+    scene.skyAtmosphere.brightnessShift = 0.08;
   }
   scene.postProcessStages.fxaa.enabled = true;
 
@@ -72,74 +87,44 @@ export function createCesiumBase(options: CesiumBaseOptions): CesiumBase {
     Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK,
   );
 
-  const grid = new Cesium.GridImageryProvider({
-    cells: 6,
-    color: Cesium.Color.fromCssColorString(TOKENS.colors.primary).withAlpha(0.26),
-    glowColor: Cesium.Color.fromCssColorString(TOKENS.colors.primary).withAlpha(0.32),
-    backgroundColor: Cesium.Color.fromCssColorString("#06141d"),
-  });
-  viewer.imageryLayers.addImageryProvider(grid);
-
   let imageryStatus: ImageryStatus = "loading";
   const setImageryStatus = (status: ImageryStatus): void => {
+    if (imageryStatus === status) return;
     imageryStatus = status;
     onImagery?.(status);
   };
 
-  const esriProvider = new Cesium.UrlTemplateImageryProvider({
-    url: ESRI_URL,
-    maximumLevel: 19,
-    credit: new Cesium.Credit("Imagery © Esri"),
-  });
-  const esriLayer = viewer.imageryLayers.addImageryProvider(esriProvider);
-  esriLayer.brightness = 0.66;
-  esriLayer.contrast = 1.18;
-  esriLayer.saturation = 0.44;
-  esriLayer.gamma = 0.94;
-  esriLayer.show = false;
+  let gridLayer: Cesium.ImageryLayer | null = viewer.imageryLayers.addImageryProvider(
+    makeGrid(palette),
+  );
+  viewer.imageryLayers.lowerToBottom(gridLayer);
 
   const gaodeProvider = new Cesium.UrlTemplateImageryProvider({
     url: GAODE_URL,
     maximumLevel: 18,
     credit: new Cesium.Credit("Imagery © AMap"),
   });
-  const gaodeLayer = viewer.imageryLayers.addImageryProvider(gaodeProvider);
-  gaodeLayer.brightness = 0.64;
-  gaodeLayer.contrast = 1.14;
-  gaodeLayer.saturation = 0.42;
-  gaodeLayer.gamma = 0.98;
-  gaodeLayer.show = false;
+  const imageryLayer = viewer.imageryLayers.addImageryProvider(gaodeProvider);
+  imageryLayer.brightness = palette.imagery.brightness;
+  imageryLayer.contrast = palette.imagery.contrast;
+  imageryLayer.saturation = palette.imagery.saturation;
+  imageryLayer.gamma = palette.imagery.gamma;
 
-  let gaodeActive = true;
-  let esriActive = false;
-  const activateEsri = (): void => {
-    if (esriActive) return;
-    gaodeActive = false;
-    gaodeLayer.show = false;
-    esriLayer.show = true;
-    esriActive = true;
-    setImageryStatus("esri");
-  };
-
+  let imageryFailed = false;
   gaodeProvider.errorEvent.addEventListener(() => {
-    if (!gaodeActive) return;
-    activateEsri();
-  });
-
-  esriProvider.errorEvent.addEventListener(() => {
-    if (!esriActive) return;
-    esriLayer.show = false;
+    if (imageryFailed) return;
+    imageryFailed = true;
+    imageryLayer.show = false;
     setImageryStatus("offline");
   });
-
-  const imageryTimer = window.setTimeout(() => {
-    if (imageryStatus === "loading") setImageryStatus("gaode");
-  }, 2400);
+  const statusTimer = window.setTimeout(() => {
+    if (!imageryFailed) setImageryStatus("gaode");
+  }, 1200);
 
   const marker = viewer.entities.add({
     position: Cesium.Cartesian3.fromDegrees(field.center.lon, field.center.lat, 0),
     billboard: {
-      image: createMarkerDataUrl(),
+      image: createMarkerDataUrl(palette.marker),
       scale: 1.1,
       scaleByDistance: new Cesium.NearFarScalar(30_000, 0.45, 2_000_000, 1.9),
       disableDepthTestDistance: Number.POSITIVE_INFINITY,
@@ -148,15 +133,38 @@ export function createCesiumBase(options: CesiumBaseOptions): CesiumBase {
     },
   });
 
+  const rebuildGrid = (next: ScenePalette): void => {
+    if (gridLayer) viewer.imageryLayers.remove(gridLayer, true);
+    gridLayer = viewer.imageryLayers.addImageryProvider(makeGrid(next));
+    viewer.imageryLayers.lowerToBottom(gridLayer);
+  };
+
+  let underground = false;
+  const applyTheme = (mode: ThemeMode): void => {
+    palette = getSceneTheme(mode);
+    scene.backgroundColor = Cesium.Color.fromCssColorString(
+      underground ? palette.grid.backgroundColor : palette.sky,
+    );
+    scene.globe.baseColor = Cesium.Color.fromCssColorString(palette.grid.backgroundColor);
+    scene.globe.show = !underground;
+    scene.globe.showGroundAtmosphere = mode === "light" && !underground;
+    if (scene.skyAtmosphere) scene.skyAtmosphere.show = mode === "light";
+    imageryLayer.brightness = palette.imagery.brightness;
+    imageryLayer.contrast = palette.imagery.contrast;
+    imageryLayer.saturation = palette.imagery.saturation;
+    imageryLayer.gamma = palette.imagery.gamma;
+    if (marker.billboard) {
+      marker.billboard.image = new Cesium.ConstantProperty(createMarkerDataUrl(palette.marker));
+    }
+    rebuildGrid(palette);
+    scene.requestRender();
+  };
+
   viewer.camera.setView({
-    destination: Cesium.Cartesian3.fromDegrees(
-      field.center.lon,
-      field.center.lat,
-      30_000_000,
-    ),
+    destination: Cesium.Cartesian3.fromDegrees(field.center.lon, field.center.lat, 80_000),
     orientation: {
       heading: 0,
-      pitch: Cesium.Math.toRadians(-45),
+      pitch: Cesium.Math.toRadians(-50),
       roll: 0,
     },
   });
@@ -167,9 +175,21 @@ export function createCesiumBase(options: CesiumBaseOptions): CesiumBase {
       marker.show = visible;
       scene.requestRender();
     },
+    setUnderground: (active: boolean) => {
+      underground = active;
+      scene.globe.show = !active;
+      // 不能用 visibility:hidden：轨道拖拽绑在该画布上，隐藏后无法接收指针事件。
+      container.style.opacity = active ? "0" : "1";
+      container.style.visibility = "";
+      scene.backgroundColor = Cesium.Color.fromCssColorString(
+        active ? palette.grid.backgroundColor : palette.sky,
+      );
+      scene.requestRender();
+    },
     getImageryStatus: () => imageryStatus,
+    applyTheme,
     destroy: () => {
-      window.clearTimeout(imageryTimer);
+      window.clearTimeout(statusTimer);
       if (!viewer.isDestroyed()) viewer.destroy();
     },
   };

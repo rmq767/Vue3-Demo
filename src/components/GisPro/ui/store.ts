@@ -1,6 +1,7 @@
 import { reactive } from "vue";
 import type { GisProEngineApi, QualityLevel } from "../core/api";
-import { createSearchIndex, createStats } from "../data/field";
+import { createSearchIndex, createStats } from "../data/chuanxi";
+import { DEFAULT_THEME, type ThemeMode } from "../styles/tokens";
 import type {
   Alarm,
   CameraHud,
@@ -17,16 +18,14 @@ import type {
 export type SceneMode = "surface" | "trajectory";
 
 export interface HudState {
+  theme: ThemeMode;
   ready: boolean;
-  introPlaying: boolean;
-  introCanSkip: boolean;
   tourPlaying: boolean;
   tourChapter: number;
   tourCanResume: boolean;
   tourProgress: number;
   sceneMode: SceneMode;
   tourTrajectory: boolean;
-  underground: boolean;
   layers: Record<LayerKey, boolean>;
   stats: Stats;
   alarms: Alarm[];
@@ -77,25 +76,30 @@ function dateText(date: Date): string {
 }
 
 const now = new Date();
+const THEME_KEY = "gispro.theme";
+
+function readTheme(): ThemeMode {
+  try {
+    return localStorage.getItem(THEME_KEY) === "dark" ? "dark" : DEFAULT_THEME;
+  } catch {
+    return DEFAULT_THEME;
+  }
+}
 
 export const state = reactive<HudState>({
+  theme: readTheme(),
   ready: false,
-  introPlaying: false,
-  introCanSkip: false,
   tourPlaying: false,
   tourChapter: 0,
   tourCanResume: false,
   tourProgress: 0,
   sceneMode: "surface",
   tourTrajectory: false,
-  underground: false,
   layers: {
     wells: true,
     stations: true,
     pipelines: true,
-    arcs: false,
     blocks: true,
-    underground: false,
     labels: true,
   },
   stats: emptyStats(),
@@ -138,7 +142,6 @@ export function unbindEngine(): void {
 
 export function initStore(field: FieldData): void {
   state.ready = false;
-  state.introPlaying = false;
   state.tourPlaying = false;
   state.tourChapter = 0;
   state.tourCanResume = false;
@@ -189,11 +192,6 @@ export function setReady(ready: boolean): void {
   state.ready = ready;
 }
 
-export function setIntro(playing: boolean, canSkip = playing): void {
-  state.introPlaying = playing;
-  state.introCanSkip = canSkip;
-}
-
 export function setTour(patch: {
   playing?: boolean;
   chapter?: number;
@@ -210,12 +208,20 @@ export function setTourProgress(progress: number): void {
 
 export function setSceneMode(mode: SceneMode): void {
   state.sceneMode = mode;
-  state.underground = false;
-  state.layers.underground = false;
 }
 
 export function setTourTrajectory(active: boolean): void {
   state.tourTrajectory = active;
+}
+
+export function setTheme(theme: ThemeMode): void {
+  state.theme = theme;
+  api?.setTheme(theme);
+  try {
+    localStorage.setItem(THEME_KEY, theme);
+  } catch {
+    // 隐私模式下 localStorage 可能不可写，主题只在本次会话生效。
+  }
 }
 
 export function setClock(date = new Date()): void {
@@ -249,24 +255,11 @@ export const actions = {
     api?.clearSelection();
   },
   setLayer(key: LayerKey, visible: boolean): void {
-    if (key === "underground") {
-      actions.setUnderground(visible);
-      return;
-    }
     state.layers[key] = visible;
     api?.setLayer(key, visible);
   },
   toggleLayer(key: LayerKey): void {
     actions.setLayer(key, !state.layers[key]);
-  },
-  setUnderground(active: boolean): void {
-    state.underground = false;
-    state.layers.underground = false;
-    void active;
-    api?.setUnderground(false);
-  },
-  toggleUnderground(): void {
-    actions.setUnderground(false);
   },
   openWellTrajectory(id: string): void {
     api?.openWellTrajectory(id);
@@ -289,9 +282,6 @@ export const actions = {
   goToChapter(index: number): void {
     api?.goToChapter(index);
   },
-  skipIntro(): void {
-    api?.skipIntro();
-  },
   resetView(): void {
     api?.resetView();
   },
@@ -301,11 +291,11 @@ export const actions = {
       alarm.id === id && alarm.status === "active" ? { ...alarm, status: "ack" } : alarm,
     );
   },
-  replayAlarm(): void {
-    api?.replayAlarm();
-  },
   setQuality(quality: QualityLevel): void {
     state.quality = quality;
     api?.setQuality(quality);
+  },
+  toggleTheme(): void {
+    setTheme(state.theme === "light" ? "dark" : "light");
   },
 };

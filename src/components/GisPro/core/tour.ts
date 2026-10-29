@@ -7,17 +7,13 @@ interface TourCallbacks {
     playing?: boolean;
     chapter?: number;
     canResume?: boolean;
-    intro?: boolean;
   }) => void;
   onCue: (cue: string | undefined, shot: CameraShot, chapter?: TourChapterScript) => void;
-  onIntro: (playing: boolean) => void;
   onChapterStart: (chapter: TourChapterScript, index: number) => void;
   onComplete: () => void;
 }
 
 export interface TourController {
-  playIntro(): void;
-  skipIntro(): void;
   play(): void;
   pause(): void;
   resume(): void;
@@ -25,7 +21,6 @@ export interface TourController {
   goTo(index: number): void;
   stop(): void;
   isPlaying(): boolean;
-  isIntro(): boolean;
   getChapter(): number;
   getProgress(): number;
   resetProgress(): void;
@@ -38,9 +33,7 @@ export function createTourController(
   callbacks: TourCallbacks,
 ): TourController {
   let timeline: gsap.core.Timeline | null = null;
-  let introTimeline: gsap.core.Timeline | null = null;
   let playing = false;
-  let intro = false;
   let chapterIndex = 0;
   let progress = 0;
 
@@ -50,14 +43,6 @@ export function createTourController(
       timeline = null;
     }
     playing = false;
-  };
-
-  const killIntro = (): void => {
-    if (introTimeline) {
-      introTimeline.kill();
-      introTimeline = null;
-    }
-    intro = false;
   };
 
   /** 进度按章节均分，在当前章节内连续填充，和底部 5 个节点对齐。 */
@@ -124,37 +109,7 @@ export function createTourController(
     timeline.play(0);
   };
 
-  const playIntro = (): void => {
-    killTimeline();
-    killIntro();
-    progress = 0;
-    intro = true;
-    playing = false;
-    callbacks.onIntro(true);
-    callbacks.onTour({ intro: true, playing: false, chapter: 0, canResume: false });
-
-    introTimeline = buildShotTimeline(script.intro, undefined, () => {
-      intro = false;
-      introTimeline = null;
-      callbacks.onIntro(false);
-      callbacks.onTour({ intro: false, playing: false, chapter: 0, canResume: false });
-      callbacks.onComplete();
-    });
-    introTimeline.play(0);
-  };
-
-  const skipIntro = (): void => {
-    killIntro();
-    Object.assign(rig.state, script.overview);
-    callbacks.onIntro(false);
-    callbacks.onTour({ intro: false, playing: false, chapter: 0, canResume: false });
-  };
-
   const play = (): void => {
-    if (intro) {
-      skipIntro();
-      return;
-    }
     if (timeline && playing) return;
     if (timeline && !playing) {
       timeline.resume();
@@ -188,12 +143,6 @@ export function createTourController(
   };
 
   const stop = (): void => {
-    if (intro) {
-      killIntro();
-      callbacks.onIntro(false);
-      callbacks.onTour({ intro: false, playing: false, chapter: 0, canResume: false });
-      return;
-    }
     if (!timeline) return;
     // 停止后再次播放会从本章开头重来，进度也对齐到本章起点。
     progress = (chapterIndex / Math.max(1, script.chapters.length)) * 100;
@@ -202,19 +151,15 @@ export function createTourController(
   };
 
   return {
-    playIntro,
-    skipIntro,
     play,
     pause,
     resume,
     next,
     goTo: (index: number) => {
-      if (intro) skipIntro();
       playChapter(index);
     },
     stop,
     isPlaying: () => playing,
-    isIntro: () => intro,
     getChapter: () => chapterIndex,
     getProgress: () => {
       syncProgress();
@@ -225,7 +170,6 @@ export function createTourController(
     },
     destroy: () => {
       killTimeline();
-      killIntro();
     },
   };
 }

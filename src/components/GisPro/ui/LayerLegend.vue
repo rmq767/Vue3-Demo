@@ -8,23 +8,51 @@ import { actions, state } from "./store";
 interface LayerRow {
   key: LayerKey;
   label: string;
-  sub: string;
   icon: string;
   count: string;
   tone: string;
 }
 
-const rows: LayerRow[] = [
-  { key: "wells", label: "井场", sub: "WELL PAD", icon: "well", count: "42", tone: "oil" },
-  { key: "stations", label: "站库", sub: "STATION", icon: "station", count: "08", tone: "primary" },
-  { key: "pipelines", label: "集输管网", sub: "PIPELINE", icon: "pipeline", count: "12", tone: "gas" },
-  { key: "blocks", label: "区块边界", sub: "BLOCKS", icon: "layers", count: "05", tone: "success" },
-  { key: "arcs", label: "数据流弧", sub: "DATA ARC", icon: "spark", count: "09", tone: "violet" },
-  { key: "labels", label: "场景标签", sub: "LABELS", icon: "labels", count: "AUTO", tone: "info" },
-];
+const rows = computed<LayerRow[]>(() => [
+  {
+    key: "wells",
+    label: "井场",
+    icon: "well",
+    count: `${state.stats.totalWells}`,
+    tone: "gas",
+  },
+  {
+    key: "stations",
+    label: "平台 / 站库",
+    icon: "station",
+    count: `${state.stats.platformCount ?? 0} / ${state.stats.stationCount ?? 0}`,
+    tone: "primary",
+  },
+  {
+    key: "pipelines",
+    label: "集输管网",
+    icon: "pipeline",
+    count: `${state.stats.pipelineCount ?? 0}`,
+    tone: "gas",
+  },
+  {
+    key: "blocks",
+    label: "区块边界",
+    icon: "layers",
+    count: `${state.stats.blockRanking.length}`,
+    tone: "sulfur",
+  },
+  {
+    key: "labels",
+    label: "场景标签",
+    icon: "labels",
+    count: "自动",
+    tone: "info",
+  },
+]);
 
 const activeCount = computed(
-  () => Object.values(state.layers).filter(Boolean).length,
+  () => rows.value.filter((row) => state.layers[row.key]).length,
 );
 
 function toggle(key: LayerKey): void {
@@ -33,7 +61,7 @@ function toggle(key: LayerKey): void {
 </script>
 
 <template>
-  <AfPanel title="图层控制" subtitle="LAYERS">
+  <AfPanel title="图层控制">
     <template #extra>
       <span class="af-mini-tag">{{ activeCount }} / {{ rows.length }}</span>
       <button
@@ -53,7 +81,6 @@ function toggle(key: LayerKey): void {
         </span>
         <div class="af-layer__copy">
           <strong>{{ row.label }}</strong>
-          <small>{{ row.sub }}</small>
         </div>
         <em>{{ row.count }}</em>
         <button
@@ -71,9 +98,9 @@ function toggle(key: LayerKey): void {
     </div>
 
     <div class="af-legend">
-      <span><i class="is-oil"></i>原油</span>
       <span><i class="is-gas"></i>天然气</span>
       <span><i class="is-water"></i>采出水</span>
+      <span><i class="is-oil"></i>硫磺</span>
       <span><i class="is-danger"></i>告警</span>
     </div>
   </AfPanel>

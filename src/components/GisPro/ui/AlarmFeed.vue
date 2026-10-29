@@ -36,14 +36,11 @@ function acknowledge(id: string, event: Event): void {
 </script>
 
 <template>
-  <AfPanel title="告警中心" subtitle="ALARM STREAM">
+  <AfPanel title="告警中心" subtitle="实时">
     <template #extra>
       <span class="af-alarm-count" :class="{ 'is-active': activeCount > 0 }">
         {{ activeCount.toString().padStart(2, "0") }}
       </span>
-      <button class="af-text-btn" type="button" @click="actions.replayAlarm()">
-        演练
-      </button>
     </template>
 
     <div class="af-alarms" role="status" aria-live="polite">
@@ -75,7 +72,7 @@ function acknowledge(id: string, event: Event): void {
               确认
             </button>
             <span v-else class="af-alarm__ack">
-              <AfIcon name="check" :size="12" /> ACK
+              <AfIcon name="check" :size="12" /> 已确认
             </span>
           </div>
         </div>
